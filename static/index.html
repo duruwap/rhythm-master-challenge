@@ -301,6 +301,8 @@ kbd {
 @keyframes popIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
 /* 패드 사이 1px 헤어라인 */
 .dividers { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+/* 음표를 칠 때 꼭짓점에서 터지는 작은 효과 레이어 (허브 아래) */
+.hit-fx { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
 .dividers line { stroke: var(--pad-gap); stroke-width: 1.5; }
 
 /* 도형: 조각 안쪽 중심(--cx, --cy)에 --size 크기로 배치 */
@@ -667,6 +669,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
     <div class="stage">
       <div class="pads" id="pads"></div>
       <svg class="dividers" id="dividers" aria-hidden="true"></svg>
+      <div class="hit-fx" id="hit-fx" aria-hidden="true"></div>
       <button class="hub" type="button" id="hub" data-i18n-aria="pause">
         <svg viewBox="0 0 100 100" aria-hidden="true" id="hub-svg"></svg>
         <div class="hub-inner">
@@ -1670,6 +1673,13 @@ const BURSTS = {
   GREAT: { count: 32, dist: [90, 260], size: [7, 12], dur: 1.1, rings: 1, ringSize: 300, colors: ['--great', '--pad-1', '--pad-9', '--pad-3'] },
   GOOD: { count: 16, dist: [70, 170], size: [6, 9], dur: 0.9, rings: 0, ringSize: 0, colors: ['--good', '--pad-9', '--pad-7'] },
 };
+/* 음표 판정마다 꼭짓점에서 터지는 작은 효과 (MISS 는 없음) */
+const HIT_BURSTS = {
+  PERFECT: { count: 12, dist: [28, 90], size: [5, 9], dur: 0.55, rings: 1, ringSize: 96, colors: ['--perfect', '--pad-7', '--pad-9', '--pad-1', '--pad-3'] },
+  GREAT: { count: 7, dist: [22, 62], size: [4, 7], dur: 0.5, rings: 1, ringSize: 64, colors: ['--great', '--pad-1', '--pad-9'] },
+  GOOD: { count: 4, dist: [18, 44], size: [4, 6], dur: 0.45, rings: 0, ringSize: 0, colors: ['--good', '--pad-9'] },
+};
+const HIT_FX_MAX = 24;   // 동시에 떠 있는 음표 효과 상한 (어려움에서 과부하 방지)
 function segDist(px, py, [x1, y1], [x2, y2]) {
   const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
   const u = L ? clamp(((px - x1) * dx + (py - y1) * dy) / L, 0, 1) : 0;
@@ -1864,6 +1874,7 @@ const Renderer = {
     this.comboChip.hidden = true; this.lastCombo = 0; this.popSlots = [];
     this.roundTitle.hidden = true;
     $$('.banner, .score-pop, .sparkles', this.float).forEach(e => e.remove());
+    $('#hit-fx').innerHTML = '';
   },
   setPressed(id, on) {
     const p = this.pads[id]; if (!p) return;
@@ -1896,6 +1907,11 @@ const Renderer = {
         v.classList.add('j-' + result);
         clearTimeout(p.vtimers[n.vertex]);
         p.vtimers[n.vertex] = setTimeout(() => v.classList.remove('j-' + result), 420);
+        // 판정 등급에 따라 꼭짓점에서 크기가 다르게 터짐 (PERFECT > GREAT > GOOD)
+        if (result !== 'miss') {
+          const layer = $('#hit-fx'), lr = layer.getBoundingClientRect(), vr = v.getBoundingClientRect();
+          this.sparkles(result.toUpperCase(), { layer, x: vr.left + vr.width / 2 - lr.left, y: vr.top + vr.height / 2 - lr.top });
+        }
       }
     }
     const bonus = (fx.comboBonus || 0) + (fx.milestone || 0);
@@ -1940,11 +1956,15 @@ const Renderer = {
     d.addEventListener('animationend', () => { this.popSlots[slot] = false; d.remove(); });
     this.float.appendChild(d);
   },
-  /** 터지는 효과. level: 'PERFECT'(가장 크게) · 'GREAT'(중간) · 'GOOD'(작게) · 'MAX'(FULL PERFECT) */
-  sparkles(level) {
+  /** 터지는 효과. level: 'PERFECT'(가장 크게) · 'GREAT'(중간) · 'GOOD'(작게) · 'MAX'(FULL PERFECT)
+      at 이 있으면 음표 판정용 작은 효과를 at.layer 의 (x, y)에 표시 */
+  sparkles(level, at) {
     if (reducedMotion()) return;
-    const P = BURSTS[level] || BURSTS.GOOD;
+    const table = at ? HIT_BURSTS : BURSTS;
+    const P = table[level] || table.GOOD;
+    if (at && at.layer.childElementCount >= HIT_FX_MAX) return;
     const box = document.createElement('div'); box.className = 'sparkles';
+    if (at) { box.style.left = at.x.toFixed(1) + 'px'; box.style.top = at.y.toFixed(1) + 'px'; }
     const colors = P.colors.map(c => Theme.color(c));
     // 퍼지는 링 (PERFECT·GREAT)
     for (let r = 0; r < P.rings; r++) {
@@ -1952,6 +1972,8 @@ const Renderer = {
       ring.style.setProperty('--ring', P.ringSize + 'px');
       ring.style.borderColor = colors[r % colors.length];
       ring.style.animationDelay = r * 0.09 + 's';
+      ring.style.animationDuration = Math.min(0.7, P.dur) + 's';
+      if (at) ring.style.borderWidth = '3px';
       box.appendChild(ring);
     }
     for (let i = 0; i < P.count; i++) {
@@ -1967,8 +1989,8 @@ const Renderer = {
       s.style.animationDelay = Math.random() * 0.12 + 's';
       box.appendChild(s);
     }
-    this.float.appendChild(box);
-    setTimeout(() => box.remove(), (P.dur + 0.4) * 1000);
+    (at ? at.layer : this.float).appendChild(box);
+    setTimeout(() => box.remove(), (P.dur + 0.3) * 1000);
   },
   updateScoreTarget() {
     const target = this.game.score.total();
