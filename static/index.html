@@ -58,8 +58,7 @@
   --pad-inactive: #D9D6E0;
   --pad-ink: #2F2540;
   --pad-ring: rgba(43, 43, 58, .55);
-  --glow-spread: 10px;
-  --glow-blur: 30px;
+  --pad-gap: rgba(43, 43, 58, .16);
 
   --perfect: #F5B700;
   --great: #2DBE6C;
@@ -96,9 +95,8 @@
   --pad-3: #E3BE55;
   --pad-inactive: #3B3752;
   --pad-ink: #1A1628;
-  --pad-ring: rgba(255, 255, 255, .8);
-  --glow-spread: 18px;
-  --glow-blur: 48px;
+  --pad-ring: rgba(255, 255, 255, .85);
+  --pad-gap: #0E0C18;
 
   --perfect: #FFC51A;
   --great: #43D985;
@@ -260,82 +258,76 @@ kbd {
 /* =========================================================================
    플레이 화면 — 4분할 패드 + 중앙 허브만 표시
    ========================================================================= */
-#screen-game { background: var(--bg); }
-.stage {
-  position: relative; flex: 1; min-height: 0;
-  display: grid; place-items: center;
-  padding: 8px;
-  container-type: size;
-}
+#screen-game { background: var(--pad-gap); padding: 0; }
+.stage { position: relative; flex: 1; min-height: 0; display: flex; }
+/* 화면 전체를 4분할 — 패드 사이는 1px 헤어라인 */
 .pads {
-  position: relative;
+  position: relative; flex: 1;
   display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-  gap: clamp(8px, 1.6vmin, 14px);
-  width: 100%; height: 100%;
+  gap: 1px; background: var(--pad-gap);
 }
-/* 넓은 화면(PC·가로 태블릿)에서는 너무 납작해지지 않게 */
-@container (min-aspect-ratio: 3/2) { .pads { width: min(100cqw, 150cqh); } }
-@container (max-aspect-ratio: 1/2) { .pads { height: min(100cqh, 200cqw); } }
-
 .pad {
-  position: relative; min-width: 0; min-height: 0;
+  position: relative; min-width: 0; min-height: 0; overflow: hidden;
   touch-action: none; -webkit-touch-callout: none;
   container-type: size; outline: none; cursor: pointer;
+  --edge-t: 0px; --edge-b: 0px;
 }
-.pad[data-pad="7"] { --pad: var(--pad-7); }
-.pad[data-pad="9"] { --pad: var(--pad-9); }
-.pad[data-pad="1"] { --pad: var(--pad-1); }
-.pad[data-pad="3"] { --pad: var(--pad-3); }
-.pad-body { position: absolute; inset: 0; will-change: transform; transition: opacity .25s; }
-.pad-glow {
-  position: absolute; inset: 0; border-radius: var(--radius-pad); opacity: 0; pointer-events: none;
-  box-shadow: 0 0 var(--glow-blur) var(--glow-spread) var(--pad);
-  will-change: opacity;
+.pad[data-pad="7"] { --pad: var(--pad-7); --edge-t: var(--safe-t); }
+.pad[data-pad="9"] { --pad: var(--pad-9); --edge-t: var(--safe-t); }
+.pad[data-pad="1"] { --pad: var(--pad-1); --edge-b: var(--safe-b); }
+.pad[data-pad="3"] { --pad: var(--pad-3); --edge-b: var(--safe-b); }
+.pad-body { position: absolute; inset: 0; transition: opacity .25s; }
+.pad-face {
+  position: absolute; inset: 0; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pad) 78%, #fff) 0%, var(--pad) 60%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--edge-t) 0 var(--edge-b);
+  color: var(--pad-ink);
 }
-.pad-ring {
-  position: absolute; inset: 0; border-radius: var(--radius-pad); pointer-events: none; opacity: 0;
-  border: clamp(3px, 1.2cqmin, 6px) solid var(--pad-ring);
+:root[data-theme="dark"] .pad-face { background: linear-gradient(160deg, color-mix(in srgb, var(--pad) 88%, #fff) 0%, var(--pad) 60%); }
+/* 눌림: 패드는 그대로, 살짝 어두워지고 음표만 눌림 */
+.pad-press { position: absolute; inset: 0; pointer-events: none; background: rgba(20, 10, 40, .10); opacity: 0; transition: opacity 90ms ease-out; }
+:root[data-theme="dark"] .pad-press { background: rgba(255, 255, 255, .10); }
+.pad.pressed .pad-press { opacity: 1; transition-duration: 30ms; }
+.pad.inactive .pad-face { background: var(--pad-inactive); }
+.pad.inactive .pad-body { opacity: .55; }
+.pad.inactive .note, .pad.inactive .pad-dots.cur { visibility: hidden; }
+.pad.is-new .pad-face { animation: newPad 1.4s ease-out; }
+@keyframes newPad { 0%, 30% { filter: brightness(1.18) saturate(1.1); } 100% { filter: none; } }
+
+/* 음표: 유일하게 두근거리는 요소. 접근 링·후광도 음표를 중심으로 */
+.note { position: relative; display: grid; place-items: center; width: 40cqmin; height: 40cqmin; transition: scale 60ms ease-out; }
+.pad.pressed .note { scale: .9; }
+.note-halo {
+  position: absolute; inset: -18%; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,255,255,.45) 38%, rgba(255,255,255,0) 70%);
+  will-change: opacity, transform;
+}
+:root[data-theme="dark"] .note-halo { background: radial-gradient(circle, rgba(255,255,255,.7) 0%, rgba(255,255,255,.25) 40%, rgba(255,255,255,0) 72%); }
+.note-ring {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0;
+  border: clamp(2px, 1.1cqmin, 5px) solid var(--pad-ring);
   will-change: transform, opacity;
 }
-.pad-face {
-  position: absolute; inset: 0; border-radius: var(--radius-pad); overflow: hidden;
-  background:
-    radial-gradient(120% 90% at 30% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%),
-    var(--pad);
-  box-shadow: inset 0 -6px 0 rgba(0,0,0,.08), 0 6px 0 rgba(0,0,0,.10), 0 14px 30px rgba(60,40,80,.12);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  color: var(--pad-ink);
-  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
-}
-:root[data-theme="dark"] .pad-face {
-  background: radial-gradient(120% 90% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), var(--pad);
-  box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 6px 0 rgba(0,0,0,.35);
-}
-.pad.pressed .pad-face {
-  transform: translateY(4px) scale(.94);
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,.08), 0 1px 0 rgba(0,0,0,.1);
-  transition-duration: 40ms;
-}
-.pad.inactive .pad-body { opacity: .35; }
-.pad.inactive .pad-face { background: var(--pad-inactive); }
-.pad.inactive .pad-icon, .pad.inactive .pad-dots.cur { visibility: hidden; }
+.note.shake { animation: shake .16s linear; }
+
 
 .pad-icon {
   font-size: clamp(34px, 34cqmin, 140px); line-height: 1; font-weight: 400;
   font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Music', 'Noto Sans Symbols 2', var(--font);
-  will-change: transform;
+  position: relative; will-change: transform;
   text-shadow: 0 2px 0 rgba(255,255,255,.35);
 }
 .pad-icon.done { opacity: .35; }
 .pad-key {
-  position: absolute; left: 6cqmin; top: 5cqmin; z-index: 1;
+  position: absolute; left: 6cqmin; top: calc(5cqmin + var(--edge-t)); z-index: 1;
   font-family: var(--font-num); font-weight: 800; font-size: clamp(12px, 7cqmin, 22px);
   padding: .1em .45em; border-radius: .5em; background: rgba(255,255,255,.45); color: var(--pad-ink);
 }
 :root[data-theme="dark"] .pad-key { background: rgba(0,0,0,.18); }
 @media (hover: none) and (pointer: coarse) { .pad-key { display: none; } }
 .pad-new {
-  position: absolute; right: 6cqmin; top: 5cqmin; display: none; z-index: 1;
+  position: absolute; right: 6cqmin; top: calc(5cqmin + var(--edge-t)); display: none; z-index: 1;
   font-family: var(--font-num); font-weight: 900; font-size: clamp(11px, 7cqmin, 20px);
   padding: .2em .6em; border-radius: 999px; background: var(--text); color: var(--bg);
 }
@@ -343,18 +335,16 @@ kbd {
 .pad[data-pad="9"] .pad-key, .pad[data-pad="3"] .pad-key { left: auto; right: 6cqmin; }
 .pad[data-pad="9"] .pad-new, .pad[data-pad="3"] .pad-new { right: auto; left: 6cqmin; }
 .pad[data-pad="1"] .pad-key, .pad[data-pad="3"] .pad-key,
-.pad[data-pad="1"] .pad-new, .pad[data-pad="3"] .pad-new { top: auto; bottom: 5cqmin; }
+.pad[data-pad="1"] .pad-new, .pad[data-pad="3"] .pad-new { top: auto; bottom: calc(5cqmin + var(--edge-b)); }
 .pad.is-new .pad-new { display: block; animation: popIn .45s var(--ease-out-back); }
-.pad.is-new .pad-glow { animation: newGlow 1.4s ease-out; }
-@keyframes newGlow { 0%, 40% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes popIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* 박자 스트립: 이 패드가 이번 마디 몇 박에 쳐야 하는지 */
-.pad-beats { position: absolute; left: 0; right: 0; top: 17cqmin; display: flex; flex-direction: column; align-items: center; gap: 2.2cqmin; }
-.pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: 17cqmin; flex-direction: column-reverse; }
+.pad-beats { position: absolute; left: 0; right: 0; top: calc(17cqmin + var(--edge-t)); display: flex; flex-direction: column; align-items: center; gap: 2.2cqmin; }
+.pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: calc(17cqmin + var(--edge-b)); flex-direction: column-reverse; }
 @media (hover: none) and (pointer: coarse) {
-  .pad-beats { top: 8cqmin; }
-  .pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: 8cqmin; }
+  .pad-beats { top: calc(8cqmin + var(--edge-t)); }
+  .pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: calc(8cqmin + var(--edge-b)); }
 }
 .pad-dots { display: flex; align-items: center; gap: 2.4cqmin; }
 .dot {
@@ -378,7 +368,6 @@ kbd {
 .pad-flash { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: var(--flash, #fff); }
 .pad-flash.go { animation: flash .28s ease-out; }
 @keyframes flash { 0% { opacity: .6; } 100% { opacity: 0; } }
-.pad-face.shake { animation: shake .16s linear; }
 @keyframes shake { 0%, 100% { translate: 0 0; } 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
 
 .judge-pop {
@@ -1695,14 +1684,14 @@ const Renderer = {
       el.dataset.pad = id;
       el.setAttribute('role', 'button');
       el.innerHTML =
-        '<div class="pad-body"><div class="pad-glow"></div><div class="pad-ring"></div>' +
+        '<div class="pad-body">' +
         '<div class="pad-face"><span class="pad-key">' + id + '</span><span class="pad-new en">NEW!</span>' +
-        '<span class="pad-icon" aria-hidden="true">♩</span>' +
+        '<div class="note" aria-hidden="true"><div class="note-halo"></div><div class="note-ring"></div><span class="pad-icon">♩</span></div>' +
         '<div class="pad-beats"><div class="pad-dots cur"></div><div class="pad-next"><span class="next-label">NEXT</span><div class="pad-dots nx"></div></div></div>' +
-        '<div class="pad-flash"></div></div></div>';
+        '<div class="pad-flash"></div><div class="pad-press"></div></div></div>';
       wrap.appendChild(el);
       this.pads[id] = {
-        el, body: $('.pad-body', el), glow: $('.pad-glow', el), ring: $('.pad-ring', el), face: $('.pad-face', el),
+        el, body: $('.pad-body', el), note: $('.note', el), halo: $('.note-halo', el), ring: $('.note-ring', el), face: $('.pad-face', el),
         icon: $('.pad-icon', el), dots: $('.pad-dots.cur', el), nextDots: $('.pad-dots.nx', el), flash: $('.pad-flash', el),
         cache: {}, pressTimer: 0, pressedAt: 0,
       };
@@ -1758,7 +1747,7 @@ const Renderer = {
     this.judgePop(n.padId, result.toUpperCase(), result);
     p.flash.style.setProperty('--flash', Theme.color('--' + result));
     this.retrigger(p.flash, 'go');
-    if (result === 'miss' && !reducedMotion()) this.retrigger(p.face, 'shake');
+    if (result === 'miss' && !reducedMotion()) this.retrigger(p.note, 'shake');
     const bonus = (fx.comboBonus || 0) + (fx.milestone || 0);
     if (bonus > 0) this.scorePop('+' + I18n.fmt(bonus * this.game.score.mul));
     if (fx.callout) { this.banner(fx.callout + ' PERFECT COMBO!', 'callout perfect', 900); AudioEngine.milestone(); }
@@ -1887,9 +1876,9 @@ const Renderer = {
       });
     }
 
-    // --- 접근 링 & 두근 (오디오 시계 기준, 매 프레임 계산)
+    // --- 음표 두근 & 접근 링 (오디오 시계 기준, 매 프레임 계산). 패드 자체는 움직이지 않는다
     const rm = reducedMotion();
-    const amp = rm ? 0.05 : 0.10;
+    const amp = rm ? 0.08 : 0.24;
     CONFIG.PAD_IDS.forEach(id => {
       const p = this.pads[id];
       let upcoming = null, last = null;
@@ -1898,31 +1887,28 @@ const Renderer = {
         if (n.time > tv) { if (!upcoming || n.time < upcoming.time) upcoming = n; }
         else if (!last || n.time > last.time) last = n;
       }
-      // 두근
-      let s = 1, glow = 0, iconS = 1;
+      // 두근: T 순간 음표가 커졌다 돌아오고 후광이 번짐
+      let iconS = 1, halo = 0;
       if (last) {
         const e = tv - last.time;
         if (e < CONFIG.PULSE_S) {
           const k = e / CONFIG.PULSE_S;
-          const curve = Math.sin(Math.PI * Math.min(1, k * 1.25)) * (1 - k * 0.3);
-          s = 1 + amp * Math.max(0, curve);
-          glow = Math.max(0, 1 - k);
-          iconS = 1 + amp * 1.6 * Math.max(0, curve);
+          const curve = Math.max(0, Math.sin(Math.PI * Math.min(1, k * 1.25)) * (1 - k * 0.3));
+          iconS = 1 + amp * curve;
+          halo = 1 - k;
         }
       }
-      // 접근 링: T − 1박 ~ T 동안 바깥에서 테두리로 줄어듦
+      // 접근 링: T − 1박 ~ T 동안 음표 둘레로 바깥에서 줄어듦
       let ringS = 1, ringO = 0;
       if (upcoming && !upcoming.judged) {
         const pr = (upcoming.time - tv) / g.beatDur;
-        if (pr <= 1) { ringS = 1 + 0.22 * pr; ringO = 0.25 + 0.75 * (1 - pr); glow = Math.max(glow, (1 - pr) * 0.25); }
+        if (pr <= 1) { ringS = 1 + 0.55 * pr; ringO = 0.15 + 0.85 * (1 - pr); halo = Math.max(halo, (1 - pr) * 0.2); }
       }
       const c = p.cache;
-      const bs = s.toFixed(4);
-      if (c.bs !== bs) { c.bs = bs; p.body.style.transform = s === 1 ? '' : `scale(${bs})`; }
       const is = iconS.toFixed(3);
-      if (c.is !== is) { c.is = is; p.icon.style.transform = iconS === 1 ? '' : `scale(${is}) translateY(${((1 - iconS) * 40).toFixed(1)}%)`; }
-      const go = glow.toFixed(2);
-      if (c.go !== go) { c.go = go; p.glow.style.opacity = go; }
+      if (c.is !== is) { c.is = is; p.icon.style.transform = iconS === 1 ? '' : `scale(${is}) translateY(${((1 - iconS) * 30).toFixed(1)}%)`; }
+      const ho = halo.toFixed(2) + '|' + is;
+      if (c.ho !== ho) { c.ho = ho; p.halo.style.opacity = halo.toFixed(2); p.halo.style.transform = `scale(${(0.85 + 0.35 * (iconS - 1) / 0.24 + 0.15 * halo).toFixed(3)})`; }
       const rs = ringS.toFixed(4) + '|' + ringO.toFixed(2);
       if (c.rs !== rs) { c.rs = rs; p.ring.style.transform = `scale(${ringS.toFixed(4)})`; p.ring.style.opacity = ringO.toFixed(2); }
     });
