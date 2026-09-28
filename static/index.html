@@ -805,6 +805,11 @@ const CONFIG = {
       { rect: [0, 0, 0.5, 1], color: 0, keys: ['TL', 'BL'] },
       { rect: [0.5, 0, 1, 1], color: 1, keys: ['TR', 'BR'] },
     ],
+    // 쉬움 + 세로 화면(모바일 세로 모드): 좌/우 대신 위/아래
+    easyPortrait: [
+      { rect: [0, 0, 1, 0.5], color: 0, keys: ['TL', 'TR'] },
+      { rect: [0, 0.5, 1, 1], color: 1, keys: ['BL', 'BR'] },
+    ],
     normal: [   // 위 2칸 + 아래 1칸(가로 전체)
       { rect: [0, 0, 0.5, 0.5], color: 0, keys: ['TL'] },
       { rect: [0.5, 0, 1, 0.5], color: 1, keys: ['TR'] },
@@ -1734,17 +1739,28 @@ const Renderer = {
     return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
   },
   /** 화면 크기에 맞춰 조각(clip-path)·구분선·도형 위치/크기를 다시 계산 */
+  /** 화면 방향에 따른 실제 배치 (쉬움은 세로 화면이면 위/아래로) */
+  effectiveLayout(level, w, h) {
+    return level === 'easy' && h > w ? CONFIG.LAYOUTS.easyPortrait : CONFIG.LAYOUTS[level];
+  },
   layoutPads() {
     const stage = $('.stage');
     const w = stage.clientWidth, h = stage.clientHeight;
-    if (!w || !h || !this.pads.length) return;
+    if (!w || !h || !this.pads.length || !this.game) return;
+    const eff = this.effectiveLayout(this.game.level, w, h);
+    this.pads.forEach((p, i) => {
+      p.rect = eff[i].rect; p.keys = eff[i].keys;
+      const keyLabel = p.keys.map(k => KEY_LABEL[k]).join('·');
+      p.el.querySelector('.pad-key').textContent = keyLabel;
+      p.el.setAttribute('aria-label', t('padLabel', { n: keyLabel }));
+    });
     const cx = w / 2, cy = h / 2;
     const hubR = ($('#hub').offsetWidth || 100) / 2 + 12;
     const safe = this.safeInsets();
     const metaH = 30;   // 도형 아래 라벨 공간
     const dividers = new Map();
     const fits = this.pads.map(p => {
-      const [rx0, ry0, rx1, ry1] = p.def.rect;
+      const [rx0, ry0, rx1, ry1] = p.rect;
       const X0 = rx0 * w, Y0 = ry0 * h, X1 = rx1 * w, Y1 = ry1 * h;
       const poly = [[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]];
       // 화면 가장자리가 아닌 변 = 패드 사이 구분선
@@ -1762,7 +1778,8 @@ const Renderer = {
       for (let i = 1; i < steps; i++) for (let j = 1; j < steps; j++) {
         const x = bx0 + (bx1 - bx0) * i / steps, y = by0 + (by1 - by0) * j / steps;
         if (!pointInPoly(x, y, poly)) continue;
-        let d = Math.min(x - safe.l, w - safe.r - x, y - safe.t, h - safe.b - y - metaH, Math.hypot(x - cx, y - cy) - hubR);
+        let d = Math.min(x - safe.l, w - safe.r - x, y - safe.t, h - safe.b - y - metaH, Math.hypot(x - cx, y - cy) - hubR,
+          Math.hypot(x - cx, y + metaH - cy) - hubR);   // 도형 아래 라벨(×N)도 허브와 겹치지 않게
         for (let k = 0; k < poly.length; k++) d = Math.min(d, segDist(x, y, poly[k], poly[(k + 1) % poly.length]));
         samples.push({ x, y, r: d, dc: Math.hypot(x - (bx0 + bx1) / 2, y - (by0 + by1) / 2) });
         if (d > best.r) best = { x, y, r: d };
@@ -1772,7 +1789,7 @@ const Renderer = {
     // 모든 패드의 도형 크기를 같게 (가장 좁은 조각 기준). 각 조각에서는 그 크기가 들어가는 자리 중 영역 중심에 가장 가까운 곳
     // 가운데 세로줄에 놓을 수 있는 크기 — 최대 크기의 75% 이상이면 조금 작아지더라도 가운데 배치를 우선
     const rPad = fits.map(f => {
-      const [rx0, , rx1] = f.p.def.rect, midX = (rx0 + rx1) / 2 * w, band = (rx1 - rx0) * w * 0.08;
+      const [rx0, , rx1] = f.p.rect, midX = (rx0 + rx1) / 2 * w, band = (rx1 - rx0) * w * 0.08;
       const rc = Math.max(0, ...f.samples.filter(q => Math.abs(q.x - midX) <= band).map(q => q.r));
       return Math.max(rc, f.best.r * 0.75);
     });
@@ -2029,10 +2046,11 @@ const InputManager = {
     return (typeof ts === 'number' && ts > 0 && ts <= now + 5 && now - ts < 500) ? ts : now;
   },
   /** 키 코드 → 현재 난이도 레이아웃의 패드 번호 (없으면 null) */
-  keyToPad(code, layout) {
+  /** 키 코드 → 현재 화면 배치의 패드 번호 (없으면 null) */
+  keyToPad(code) {
     const pos = KEY_POS[code];
-    if (!pos || !layout) return null;
-    const i = layout.findIndex(d => d.keys.includes(pos));
+    if (!pos || !Renderer.pads.length) return null;
+    const i = Renderer.pads.findIndex(p => (p.keys || p.def.keys).includes(pos));
     return i >= 0 ? i : null;
   },
   init(handler) {
@@ -2468,7 +2486,7 @@ const App = {
 
     document.addEventListener('keydown', e => this.onKey(e));
     document.addEventListener('keyup', e => {
-      const id = this.game ? InputManager.keyToPad(e.code, this.game.layout) : null;
+      const id = this.game ? InputManager.keyToPad(e.code) : null;
       if (id != null) Renderer.setPressed(id, false);
     });
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.pause(); });
@@ -2489,7 +2507,7 @@ const App = {
     if (modal) { if (e.code === 'Escape') UI.closeModal(modal); return; }
     const inGame = this.state === 'countIn' || this.state === 'playing';
     if (KEY_POS[e.code]) {
-      const pad = this.game ? InputManager.keyToPad(e.code, this.game.layout) : null;
+      const pad = this.game ? InputManager.keyToPad(e.code) : null;
       if (inGame && pad != null) { e.preventDefault(); if (!e.repeat) InputManager.press(pad, e.timeStamp, false); }
       return;
     }
