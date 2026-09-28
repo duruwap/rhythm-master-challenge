@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko" data-theme="light">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -8,8 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="두근거리는 패드를 박자에 맞춰 누르는 드럼 리듬 연습 게임">
-<title>리듬 마스터 챌린지</title>
+<meta name="description" content="Tap every corner of the shapes on the beat — a polyrhythm practice game">
+<title>Rhythm Master Challenge</title>
 <link rel="icon" href="static/favicon.svg" type="image/svg+xml">
 <script>
 /* 렌더 전에 테마를 적용해 깜빡임(FOUC) 방지 */
@@ -186,10 +186,12 @@ body.playing .bg-blobs { display: none; }
   background: var(--glass); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   box-shadow: var(--shadow-1); font-weight: 700; font-size: 14px;
 }
+/* 버튼에는 '언어' 글자만 보이고, 투명한 select 가 버튼 전체를 덮어 목록을 연다 */
 .pill-select select {
-  appearance: none; -webkit-appearance: none; border: 0; background: transparent;
-  font-weight: 700; padding-right: 2px; cursor: pointer; outline: none;
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer; font-size: 16px;
 }
+.pill-select:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
 .pill-select select option { color: #2B2B3A; background: #fff; }
 
 /* =========================================================================
@@ -605,7 +607,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
   <!-- ================= 시작 화면 ================= -->
   <section id="screen-title" class="screen active" aria-labelledby="title-h1">
     <header class="topbar">
-      <label class="pill-select"><span aria-hidden="true">🌐</span>
+      <label class="pill-select"><span aria-hidden="true">🌐</span><span data-i18n="language"></span>
         <select class="lang-select" data-i18n-aria="language"></select>
       </label>
       <button class="icon-btn theme-toggle" type="button" data-i18n-aria="theme">☀️</button>
@@ -675,7 +677,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
         <button class="btn" type="button" id="btn-pause-retry" data-i18n="retry"></button>
         <button class="btn" type="button" id="btn-pause-home" data-i18n="home"></button>
         <div class="sheet-row">
-          <label class="pill-select"><span aria-hidden="true">🌐</span><select class="lang-select" data-i18n-aria="language"></select></label>
+          <label class="pill-select"><span aria-hidden="true">🌐</span><span data-i18n="language"></span><select class="lang-select" data-i18n-aria="language"></select></label>
           <button class="icon-btn theme-toggle" type="button" data-i18n-aria="theme">☀️</button>
         </div>
       </div>
@@ -917,6 +919,8 @@ const PatternGenerator = {
           for (let k = 0; k < n; k++) notes.push({ pad, vertex: k, bar, beatPos: bar * beatsPerBar + k * beatsPerBar / n });
         });
       }
+      // 마무리 박: 2바퀴를 돌고 공이 시작 꼭짓점으로 돌아오는 순간 — 모든 패드를 함께 친다
+      shapes.forEach((n, pad) => notes.push({ pad, vertex: 0, bar: CONFIG.BARS_PER_ROUND, beatPos: CONFIG.BARS_PER_ROUND * beatsPerBar, closing: true }));
       notes.sort((a, b) => a.beatPos - b.beatPos || a.pad - b.pad);
       rounds.push({ index: r, shapes, notes });
     }
@@ -1222,7 +1226,7 @@ Object.assign(I18N.ko, {
   pcHint: 'PC: Q · W · A · S 키로 플레이 (동시에 여러 개 OK)',
   how1: '공이 도형 둘레를 돌아요. 꼭짓점에 닿는 순간 그 패드를 눌러요!',
   how2: '모든 도형은 한 마디(4박)에 한 바퀴 — ●는 1번, ━는 2번, △는 3번, □는 4번. 서로 엇갈리는 박자가 폴리리듬이에요',
-  how3: '라운드마다 4·3·2·1 카운트 동안 새 도형을 확인하고 시작! 같은 리듬을 2마디 반복해요',
+  how3: '라운드마다 4·3·2·1 카운트 동안 새 도형을 확인하고 시작! 같은 리듬을 2마디 반복하고, 공이 시작점으로 돌아오는 마무리 박에 모두 함께 톡!',
   how4: 'PC는 Q · W · A · S — 패드 위치 그대로 (여러 개 동시에 눌러도 돼요)',
   how5: '가운데 동그라미를 누르면 일시정지해요',
   easyDesc: '패드 2개', normalDesc: '패드 3개', hardDesc: '패드 4개', challengeStart: '도전하기',
@@ -1232,7 +1236,7 @@ Object.assign(I18N.en, {
   pcHint: 'PC: Play with Q · W · A · S (press several at once)',
   how1: 'A ball travels around each shape. Tap that pad the moment it hits a corner!',
   how2: 'Every shape takes one bar (4 beats) per lap — ● 1 hit, ━ 2, △ 3, □ 4. Shapes crossing each other = polyrhythm',
-  how3: 'Each round starts after a 4·3·2·1 count — read the new shapes, then go. Same rhythm for 2 bars!',
+  how3: 'Each round starts after a 4·3·2·1 count — read the new shapes, then go. Same rhythm for 2 bars, then hit every pad on the closing beat as the balls return to the start!',
   how4: 'On PC, Q · W · A · S — same layout as the pads (press several at once)',
   how5: 'Tap the center circle to pause',
   easyDesc: '2 pads', normalDesc: '3 pads', hardDesc: '4 pads', challengeStart: 'Play',
@@ -1242,7 +1246,7 @@ Object.assign(I18N.zh, {
   pcHint: '电脑：使用 Q · W · A · S 键（可同时按多个）',
   how1: '小球沿着图形移动，碰到顶点的瞬间点击该鼓垫！',
   how2: '每个图形一小节（4拍）转一圈 — ● 1 次，━ 2 次，△ 3 次，□ 4 次。不同图形交错就是多节奏',
-  how3: '每回合在 4·3·2·1 倒数期间查看新图形，然后开始！同样的节奏重复 2 小节',
+  how3: '每回合在 4·3·2·1 倒数期间查看新图形，然后开始！同样的节奏重复 2 小节，小球回到起点时一起敲收尾拍！',
   how4: '电脑用 Q · W · A · S — 与鼓垫位置一致（可同时按多个）',
   how5: '点击中间的圆圈暂停',
   easyDesc: '2 个鼓垫', normalDesc: '3 个鼓垫', hardDesc: '4 个鼓垫', challengeStart: '挑战',
@@ -1252,7 +1256,7 @@ Object.assign(I18N.ja, {
   pcHint: 'PC：Q・W・A・S キーでプレイ（同時押しOK）',
   how1: 'ボールが図形のふちを回るよ。角に当たった瞬間にそのパッドをタップ！',
   how2: 'どの図形も1小節（4拍）で1周 — ●は1回、━は2回、△は3回、□は4回。ずれて重なるリズムがポリリズム',
-  how3: 'ラウンドごとに4・3・2・1のカウント中に新しい図形を確認してスタート！同じリズムを2小節くり返すよ',
+  how3: 'ラウンドごとに4・3・2・1のカウント中に新しい図形を確認してスタート！同じリズムを2小節くり返して、ボールがスタートに戻る締めの拍でみんな一緒にタップ！',
   how4: 'PCは Q・W・A・S — パッドと同じ配置（同時押しOK）',
   how5: '真ん中の丸をタップで一時停止',
   easyDesc: 'パッド2つ', normalDesc: 'パッド3つ', hardDesc: 'パッド4つ', challengeStart: '挑戦する',
@@ -1264,14 +1268,7 @@ const I18n = {
     const url = new URLSearchParams(location.search).get('lang');
     if (url && I18N[url]) { this.urlLang = url; return url; }
     if (Settings.data.lang && I18N[Settings.data.lang]) return Settings.data.lang;
-    for (const l of (navigator.languages || [navigator.language || ''])) {
-      const s = String(l).toLowerCase();
-      if (s.startsWith('ko')) return 'ko';
-      if (s.startsWith('ja')) return 'ja';
-      if (s.startsWith('zh')) return 'zh';
-      if (s.startsWith('en')) return 'en';
-    }
-    return 'en';
+    return 'en';   // 기본 언어는 영어 (브라우저 언어와 무관). 사용자가 고르면 저장된 언어 사용
   },
   t(key, params) {
     let s = I18N[this.lang][key];
@@ -1472,13 +1469,13 @@ class Game {
     this.notes = [];
     let id = 0;
     this.rounds.forEach(r => r.notes.forEach(n => {
-      this.notes.push({ id: id++, round: r.index, pad: n.pad, vertex: n.vertex, bar: n.bar, beatPos: n.beatPos,
+      this.notes.push({ id: id++, round: r.index, pad: n.pad, vertex: n.vertex, bar: n.bar, beatPos: n.beatPos, closing: !!n.closing,
         time: 0, judged: false, result: null, deltaMs: null, lateWin: W.good });
     }));
-    // 패드별 라운드 마지막 음은 늦은 입력을 더 너그럽게
+    // 라운드 끝부분(패드별 마지막 연주 음 + 마무리 박)은 늦은 입력을 더 너그럽게
     this.rounds.forEach(r => this.layout.forEach((_, pad) => {
       const mine = this.notes.filter(n => n.round === r.index && n.pad === pad);
-      if (mine.length) mine[mine.length - 1].lateWin = W.lastLate;
+      mine.slice(-2).forEach(n => { n.lateWin = W.lastLate; });
     }));
     this.roundNotes = this.rounds.map(r => this.notes.filter(n => n.round === r.index));
     this.padNotes = this.layout.map((_, i) => this.notes.filter(n => n.pad === i));
@@ -1508,7 +1505,8 @@ class Game {
     for (let r = fromRound; r < CONFIG.TOTAL_ROUNDS; r++) {
       const rs = this.roundStart(r);
       for (let k = CONFIG.COUNT_IN_BEATS; k >= 1; k--) this.ticks.push({ time: rs - k * this.beatDur, accent: k === CONFIG.COUNT_IN_BEATS, countIn: true });
-      for (let j = 0; j < this.roundBeats; j++) this.ticks.push({ time: rs + j * this.beatDur, accent: j % this.barBeats === 0, countIn: false });
+      // j = roundBeats: 마무리 박 (이어서 다음 라운드 카운트가 끊김 없이 이어짐)
+      for (let j = 0; j <= this.roundBeats; j++) this.ticks.push({ time: rs + j * this.beatDur, accent: j % this.barBeats === 0, countIn: false });
     }
     this.tickIdx = 0;
     this.state = 'countIn';
@@ -1575,6 +1573,8 @@ class Game {
     // 헛치기: 연주 중인데 이 패드의 판정 윈도우 안에 노트가 없음 (준비 시간의 연습 탭은 제외)
     const pos = this.position(tIn);
     if (pos.phase !== 'round') return null;
+    // 방금 판정된 노트 바로 옆의 재입력(터치 이중 인식·여운 탭)은 감점하지 않음
+    if (this.padNotes[pad].some(n => n.judged && Math.abs(tIn - n.time) <= 0.25)) return null;
     let r = pos.round;
     if (r < this.nextFinalize) r = this.nextFinalize;
     if (r >= CONFIG.TOTAL_ROUNDS) return null;
@@ -1994,6 +1994,7 @@ const Renderer = {
     // --- 허브: 박자 세그먼트, 재생헤드, 라운드 진행
     let beatIdx = -1, headFrac = 0;
     if (pos.phase === 'round') { beatIdx = Math.floor(pos.beat) % CONFIG.BEATS_PER_BAR; headFrac = pos.barFrac; }
+    else if (pos.phase === 'tail') beatIdx = 0;   // 마무리 박
     else if (pos.phase === 'prep' && pos.beatsLeft <= CONFIG.COUNT_IN_BEATS) {
       beatIdx = CONFIG.COUNT_IN_BEATS - Math.ceil(pos.beatsLeft);
       headFrac = (CONFIG.COUNT_IN_BEATS - pos.beatsLeft) / CONFIG.COUNT_IN_BEATS;
