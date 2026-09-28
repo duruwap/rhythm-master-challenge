@@ -1,0 +1,2715 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FFF8F0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="두근거리는 패드를 박자에 맞춰 누르는 드럼 리듬 연습 게임">
+<title>리듬 마스터 챌린지</title>
+<link rel="icon" href="static/favicon.svg" type="image/svg+xml">
+<script>
+/* 렌더 전에 테마를 적용해 깜빡임(FOUC) 방지 */
+(function () {
+  var dark = false;
+  try {
+    var s = JSON.parse(localStorage.getItem('rmc.settings.v1') || '{}');
+    var th = s.theme || 'system';
+    dark = th === 'dark' || (th === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  } catch (e) {
+    dark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+})();
+</script>
+<link rel="stylesheet" href="static/fonts/pretendard/pretendardvariable-dynamic-subset.css">
+<style>
+/* =========================================================================
+   디자인 토큰
+   ========================================================================= */
+:root {
+  --font-num: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-lang: 'Pretendard Variable', Pretendard;
+  --font: var(--font-lang), -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto,
+          'Hiragino Sans', 'Noto Sans JP', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Apple SD Gothic Neo', sans-serif;
+
+  --bg: #FFF8F0;
+  --bg-2: #FFEFE3;
+  --surface: #FFFFFF;
+  --surface-2: #F7F3FB;
+  --glass: rgba(255, 255, 255, .72);
+  --glass-border: rgba(255, 255, 255, .9);
+  --text: #2B2B3A;
+  --text-sub: #6B6B80;
+  --line: rgba(43, 43, 58, .10);
+  --shadow-1: 0 1px 2px rgba(60, 40, 80, .06), 0 8px 24px rgba(60, 40, 80, .08);
+  --shadow-2: 0 2px 6px rgba(60, 40, 80, .08), 0 20px 48px rgba(60, 40, 80, .14);
+  --accent: #7C5CFF;
+  --accent-ink: #FFFFFF;
+  --danger: #E5484D;
+
+  --pad-7: #FF9EB5;
+  --pad-9: #8FD3FF;
+  --pad-1: #9EF0C8;
+  --pad-3: #FFE38A;
+  --pad-inactive: #D9D6E0;
+  --pad-ink: #2F2540;
+  --pad-ring: rgba(43, 43, 58, .55);
+  --glow-spread: 10px;
+  --glow-blur: 30px;
+
+  --perfect: #F5B700;
+  --great: #2DBE6C;
+  --good: #3D8BFF;
+  --miss: #9A9AA8;
+
+  --radius-pad: clamp(18px, 4vmin, 34px);
+  --radius-card: 22px;
+  --ease-out-back: cubic-bezier(.34, 1.56, .64, 1);
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+}
+:root[data-theme="dark"] {
+  --bg: #1E1B2E;
+  --bg-2: #25213A;
+  --surface: #2A2640;
+  --surface-2: #332E4D;
+  --glass: rgba(42, 38, 64, .72);
+  --glass-border: rgba(255, 255, 255, .08);
+  --text: #F3F0FF;
+  --text-sub: #B8B3D1;
+  --line: rgba(243, 240, 255, .10);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, .35), 0 20px 48px rgba(0, 0, 0, .45);
+  --accent: #9D85FF;
+  --accent-ink: #15122A;
+  --danger: #FF6B70;
+
+  --pad-7: #E0708F;
+  --pad-9: #5AAEE0;
+  --pad-1: #5FCB98;
+  --pad-3: #E3BE55;
+  --pad-inactive: #3B3752;
+  --pad-ink: #1A1628;
+  --pad-ring: rgba(255, 255, 255, .8);
+  --glow-spread: 18px;
+  --glow-blur: 48px;
+
+  --perfect: #FFC51A;
+  --great: #43D985;
+  --good: #5C9FFF;
+  --miss: #ACACBA;
+}
+html[lang="ja"] { --font-lang: 'Pretendard JP Variable', 'Pretendard Variable'; }
+html[lang="zh"] { --font-lang: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei'; }
+
+/* =========================================================================
+   기본
+   ========================================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+html { background: var(--bg); color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.en { font-family: var(--font-num); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+#app { position: fixed; inset: 0; }
+.screen {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  padding: var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l);
+}
+.screen.active { display: flex; animation: screenIn .28s ease-out; }
+@keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* 배경 블롭 (시작/결과 화면) */
+.bg-blobs { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
+.bg-blobs i { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(70px); opacity: .45; animation: drift 18s ease-in-out infinite alternate; }
+:root[data-theme="dark"] .bg-blobs i { opacity: .28; }
+.bg-blobs i:nth-child(1) { background: var(--pad-7); left: -20vmax; top: -22vmax; }
+.bg-blobs i:nth-child(2) { background: var(--pad-9); right: -24vmax; top: -10vmax; animation-delay: -4s; }
+.bg-blobs i:nth-child(3) { background: var(--pad-1); left: -18vmax; bottom: -26vmax; animation-delay: -9s; }
+.bg-blobs i:nth-child(4) { background: var(--pad-3); right: -20vmax; bottom: -24vmax; animation-delay: -13s; }
+@keyframes drift { to { transform: translate(6vmax, 4vmax) scale(1.08); } }
+body.playing .bg-blobs { display: none; }
+
+/* 공통 버튼 */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; min-width: 120px; padding: 12px 20px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+  font-weight: 700; font-size: clamp(14px, 3.6vw, 16px); line-height: 1.2; text-align: center;
+  box-shadow: var(--shadow-1);
+  transition: transform .12s var(--ease-out-back), background .2s, box-shadow .2s;
+}
+.btn:hover { box-shadow: var(--shadow-2); }
+.btn:active { transform: scale(.96); }
+.btn-primary { background: var(--text); color: var(--bg); border-color: transparent; }
+.btn-accent { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn-big { min-height: 64px; font-size: clamp(18px, 5vw, 22px); padding: 16px 36px; min-width: min(280px, 80vw); font-weight: 800; }
+.btn-ghost { background: transparent; box-shadow: none; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+  display: inline-grid; place-items: center; background: var(--glass);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  font-size: 18px; box-shadow: var(--shadow-1);
+  transition: transform .12s var(--ease-out-back);
+}
+.icon-btn:active { transform: scale(.92); }
+.pill-select {
+  position: relative; display: inline-flex; align-items: center; gap: 6px;
+  height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--glass); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-1); font-weight: 700; font-size: 14px;
+}
+.pill-select select {
+  appearance: none; -webkit-appearance: none; border: 0; background: transparent;
+  font-weight: 700; padding-right: 2px; cursor: pointer; outline: none;
+}
+.pill-select select option { color: #2B2B3A; background: #fff; }
+
+/* =========================================================================
+   시작 화면
+   ========================================================================= */
+#screen-title { align-items: center; overflow-y: auto; touch-action: pan-y; }
+.topbar {
+  width: 100%; max-width: 960px; display: flex; justify-content: flex-end; gap: 8px;
+  padding: 14px 16px 0;
+}
+.title-main {
+  flex: 1; width: 100%; max-width: 560px; padding: 12px 20px 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center;
+}
+.logo-mark {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  width: clamp(112px, 30vw, 148px); aspect-ratio: 1; position: relative;
+}
+.logo-mark span {
+  border-radius: 30%; box-shadow: inset 0 -5px 0 rgba(0,0,0,.08), 0 6px 16px rgba(60,40,80,.15);
+  animation: logoBeat 2.67s infinite; /* 90 BPM × 4박 */
+  display: grid; place-items: center; font-size: clamp(22px, 6vw, 30px); color: var(--pad-ink); font-weight: 800;
+}
+.logo-mark span:nth-child(1) { background: var(--pad-7); animation-delay: 0s; }
+.logo-mark span:nth-child(2) { background: var(--pad-9); animation-delay: .667s; }
+.logo-mark span:nth-child(4) { background: var(--pad-3); animation-delay: 1.333s; }
+.logo-mark span:nth-child(3) { background: var(--pad-1); animation-delay: 2s; }
+@keyframes logoBeat { 0% { transform: scale(1.12); filter: brightness(1.08); } 8% { transform: scale(1); filter: none; } 100% { transform: scale(1); } }
+.logo-mark::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 26%; height: 26%;
+  transform: translate(-50%, -50%); border-radius: 50%; background: var(--text);
+  box-shadow: 0 0 0 5px var(--bg);
+}
+.title-text h1 {
+  margin: 0; font-weight: 850; font-size: clamp(30px, 8.4vw, 46px); line-height: 1.12; letter-spacing: -.03em;
+}
+.title-text p { margin: 8px 0 0; color: var(--text-sub); font-size: clamp(14px, 3.8vw, 17px); font-weight: 500; }
+.best-card {
+  display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow-1);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); font-weight: 700; font-size: 14px;
+}
+.best-card b { font-size: 17px; }
+.challenge-card {
+  width: 100%; padding: 14px 16px; border-radius: var(--radius-card); text-align: left;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pad-7) 35%, var(--surface)), color-mix(in srgb, var(--pad-9) 35%, var(--surface)));
+  border: 1px solid var(--line); box-shadow: var(--shadow-1);
+  display: flex; align-items: center; gap: 12px;
+}
+.challenge-card .c-body { flex: 1; min-width: 0; }
+.challenge-card b { display: block; font-size: 16px; }
+.challenge-card span { font-size: 13px; color: var(--text-sub); font-weight: 600; }
+.challenge-card button { min-width: 0; min-height: 36px; padding: 6px 12px; font-size: 13px; box-shadow: none; }
+.title-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+.title-actions .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.title-foot { padding: 8px 20px 18px; text-align: center; color: var(--text-sub); font-size: 13px; line-height: 1.6; max-width: 560px; }
+.title-foot p { margin: 0; }
+.title-foot .warn { color: var(--danger); font-weight: 700; }
+.kbd-only { display: none; }
+@media (hover: hover) and (pointer: fine) { .kbd-only { display: block; } }
+kbd {
+  font-family: var(--font-num); font-weight: 700; font-size: .92em; padding: 1px 6px; border-radius: 6px;
+  border: 1px solid var(--line); border-bottom-width: 2px; background: var(--surface);
+}
+
+/* =========================================================================
+   플레이 화면 — 4분할 패드 + 중앙 허브만 표시
+   ========================================================================= */
+#screen-game { background: var(--bg); }
+.stage {
+  position: relative; flex: 1; min-height: 0;
+  display: grid; place-items: center;
+  padding: 8px;
+  container-type: size;
+}
+.pads {
+  position: relative;
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+  gap: clamp(8px, 1.6vmin, 14px);
+  width: 100%; height: 100%;
+}
+/* 넓은 화면(PC·가로 태블릿)에서는 너무 납작해지지 않게 */
+@container (min-aspect-ratio: 3/2) { .pads { width: min(100cqw, 150cqh); } }
+@container (max-aspect-ratio: 1/2) { .pads { height: min(100cqh, 200cqw); } }
+
+.pad {
+  position: relative; min-width: 0; min-height: 0;
+  touch-action: none; -webkit-touch-callout: none;
+  container-type: size; outline: none; cursor: pointer;
+}
+.pad[data-pad="7"] { --pad: var(--pad-7); }
+.pad[data-pad="9"] { --pad: var(--pad-9); }
+.pad[data-pad="1"] { --pad: var(--pad-1); }
+.pad[data-pad="3"] { --pad: var(--pad-3); }
+.pad-body { position: absolute; inset: 0; will-change: transform; transition: opacity .25s; }
+.pad-glow {
+  position: absolute; inset: 0; border-radius: var(--radius-pad); opacity: 0; pointer-events: none;
+  box-shadow: 0 0 var(--glow-blur) var(--glow-spread) var(--pad);
+  will-change: opacity;
+}
+.pad-ring {
+  position: absolute; inset: 0; border-radius: var(--radius-pad); pointer-events: none; opacity: 0;
+  border: clamp(3px, 1.2cqmin, 6px) solid var(--pad-ring);
+  will-change: transform, opacity;
+}
+.pad-face {
+  position: absolute; inset: 0; border-radius: var(--radius-pad); overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 30% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%),
+    var(--pad);
+  box-shadow: inset 0 -6px 0 rgba(0,0,0,.08), 0 6px 0 rgba(0,0,0,.10), 0 14px 30px rgba(60,40,80,.12);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--pad-ink);
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+:root[data-theme="dark"] .pad-face {
+  background: radial-gradient(120% 90% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), var(--pad);
+  box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 6px 0 rgba(0,0,0,.35);
+}
+.pad.pressed .pad-face {
+  transform: translateY(4px) scale(.94);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.08), 0 1px 0 rgba(0,0,0,.1);
+  transition-duration: 40ms;
+}
+.pad.inactive .pad-body { opacity: .35; }
+.pad.inactive .pad-face { background: var(--pad-inactive); }
+.pad.inactive .pad-icon, .pad.inactive .pad-dots.cur { visibility: hidden; }
+
+.pad-icon {
+  font-size: clamp(34px, 34cqmin, 140px); line-height: 1; font-weight: 400;
+  font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Music', 'Noto Sans Symbols 2', var(--font);
+  will-change: transform;
+  text-shadow: 0 2px 0 rgba(255,255,255,.35);
+}
+.pad-icon.done { opacity: .35; }
+.pad-key {
+  position: absolute; left: 6cqmin; top: 5cqmin; z-index: 1;
+  font-family: var(--font-num); font-weight: 800; font-size: clamp(12px, 7cqmin, 22px);
+  padding: .1em .45em; border-radius: .5em; background: rgba(255,255,255,.45); color: var(--pad-ink);
+}
+:root[data-theme="dark"] .pad-key { background: rgba(0,0,0,.18); }
+@media (hover: none) and (pointer: coarse) { .pad-key { display: none; } }
+.pad-new {
+  position: absolute; right: 6cqmin; top: 5cqmin; display: none; z-index: 1;
+  font-family: var(--font-num); font-weight: 900; font-size: clamp(11px, 7cqmin, 20px);
+  padding: .2em .6em; border-radius: 999px; background: var(--text); color: var(--bg);
+}
+/* 가운데 허브와 겹치지 않도록 라벨·박자 스트립은 패드의 바깥쪽 가장자리에 둔다 */
+.pad[data-pad="9"] .pad-key, .pad[data-pad="3"] .pad-key { left: auto; right: 6cqmin; }
+.pad[data-pad="9"] .pad-new, .pad[data-pad="3"] .pad-new { right: auto; left: 6cqmin; }
+.pad[data-pad="1"] .pad-key, .pad[data-pad="3"] .pad-key,
+.pad[data-pad="1"] .pad-new, .pad[data-pad="3"] .pad-new { top: auto; bottom: 5cqmin; }
+.pad.is-new .pad-new { display: block; animation: popIn .45s var(--ease-out-back); }
+.pad.is-new .pad-glow { animation: newGlow 1.4s ease-out; }
+@keyframes newGlow { 0%, 40% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes popIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 박자 스트립: 이 패드가 이번 마디 몇 박에 쳐야 하는지 */
+.pad-beats { position: absolute; left: 0; right: 0; top: 17cqmin; display: flex; flex-direction: column; align-items: center; gap: 2.2cqmin; }
+.pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: 17cqmin; flex-direction: column-reverse; }
+@media (hover: none) and (pointer: coarse) {
+  .pad-beats { top: 8cqmin; }
+  .pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: 8cqmin; }
+}
+.pad-dots { display: flex; align-items: center; gap: 2.4cqmin; }
+.dot {
+  width: 7.5cqmin; height: 7.5cqmin; min-width: 7px; min-height: 7px; max-width: 22px; max-height: 22px;
+  border-radius: 50%; border: max(1.5px, .7cqmin) solid currentColor; opacity: .35;
+  display: grid; place-items: center; font-size: 5cqmin; font-weight: 900; line-height: 1;
+  transition: transform .15s var(--ease-out-back), background .15s;
+}
+.dot.half { width: 5cqmin; height: 5cqmin; min-width: 5px; min-height: 5px; }
+.dot.on { background: currentColor; opacity: .85; }
+.dot.now { transform: scale(1.3); }
+.dot.j-perfect { background: var(--perfect); border-color: var(--perfect); opacity: 1; }
+.dot.j-great { background: var(--great); border-color: var(--great); opacity: 1; }
+.dot.j-good { background: var(--good); border-color: var(--good); opacity: 1; }
+.dot.j-miss { background: transparent; border-color: var(--miss); opacity: .9; }
+.dot.j-miss::after { content: '×'; color: var(--pad-ink); font-size: 6cqmin; }
+.pad-next { display: none; align-items: center; gap: 2cqmin; opacity: .45; }
+.pad.show-next .pad-next { display: flex; }
+.next-label { font-family: var(--font-num); font-weight: 900; font-size: clamp(9px, 5cqmin, 15px); letter-spacing: .06em; }
+
+.pad-flash { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: var(--flash, #fff); }
+.pad-flash.go { animation: flash .28s ease-out; }
+@keyframes flash { 0% { opacity: .6; } 100% { opacity: 0; } }
+.pad-face.shake { animation: shake .16s linear; }
+@keyframes shake { 0%, 100% { translate: 0 0; } 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+
+.judge-pop {
+  position: absolute; left: 50%; top: calc(50% - 26cqmin); z-index: 3; pointer-events: none;
+  font-family: var(--font-num); font-weight: 900; letter-spacing: .02em; white-space: nowrap;
+  font-size: clamp(16px, 11cqmin, 44px);
+  -webkit-text-stroke: max(3px, .9cqmin) var(--surface); paint-order: stroke fill;
+  animation: judgePop .42s ease-out forwards;
+}
+.judge-pop.perfect { color: var(--perfect); }
+.judge-pop.great { color: var(--great); }
+.judge-pop.good { color: var(--good); }
+.judge-pop.miss { color: var(--miss); }
+.judge-pop.wrong { color: var(--danger); font-size: clamp(14px, 8cqmin, 32px); }
+@keyframes judgePop {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.7); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -20px) scale(1); }
+}
+
+/* 중앙 허브: 박자 링 + 라운드 + 점수. 탭하면 일시정지 */
+.hub {
+  position: absolute; left: 50%; top: 50%; z-index: 5;
+  width: clamp(86px, 17vmin, 136px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; border: 0; padding: 0;
+  background: var(--glass); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 0 0 clamp(4px, 1vmin, 7px) var(--bg), var(--shadow-2);
+  display: grid; place-items: center; color: var(--text);
+  touch-action: none;
+}
+.hub svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.hub .seg { fill: none; stroke: var(--line); stroke-width: 7; stroke-linecap: round; transition: stroke .08s; }
+:root[data-theme="dark"] .hub .seg { stroke: rgba(243,240,255,.14); }
+.hub .seg.on { stroke: var(--text); }
+.hub .seg.strong.on { stroke: var(--accent); }
+.hub .prog { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; opacity: .55; }
+.hub .prog-bg { fill: none; stroke: var(--line); stroke-width: 2.5; }
+.hub .head { fill: var(--text); }
+.hub-inner { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1.05; pointer-events: none; }
+.hub-round { font-family: var(--font-num); font-weight: 800; font-size: clamp(10px, 2.1vmin, 13px); color: var(--text-sub); letter-spacing: .04em; }
+.hub-score { font-weight: 850; font-size: clamp(15px, 3.4vmin, 24px); display: inline-block; transition: transform .12s; }
+.hub-score.bump { transform: scale(1.15); }
+.hub-count { font-family: var(--font-num); font-weight: 900; font-size: clamp(32px, 8vmin, 60px); line-height: 1; }
+.hub-count.tick { animation: countPop .3s var(--ease-out-back); }
+@keyframes countPop { from { transform: scale(1.5); opacity: .3; } to { transform: none; opacity: 1; } }
+.hub .pause-glyph { position: absolute; bottom: 14%; font-size: clamp(8px, 1.6vmin, 11px); color: var(--text-sub); opacity: .7; }
+
+.float-layer { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 6; pointer-events: none; }
+.combo-chip {
+  position: absolute; left: 0; bottom: calc(clamp(86px, 17vmin, 136px) / 2 + 12px); transform: translateX(-50%);
+  white-space: nowrap; padding: 5px 12px; border-radius: 999px;
+  background: var(--perfect); color: #2B2100; font-family: var(--font-num); font-weight: 900; font-size: clamp(12px, 2.4vmin, 16px);
+  box-shadow: 0 4px 14px rgba(245,183,0,.4);
+}
+.combo-chip.bump { animation: popIn .25s var(--ease-out-back); }
+.score-pop {
+  position: absolute; left: 0; top: calc(clamp(86px, 17vmin, 136px) / 2 + 8px);
+  white-space: nowrap; font-family: var(--font-num); font-weight: 900; font-size: clamp(13px, 2.6vmin, 18px);
+  color: var(--perfect); -webkit-text-stroke: 3px var(--bg); paint-order: stroke fill;
+  animation: scorePop .9s ease-out forwards;
+}
+.score-pop.minus { color: var(--danger); }
+@keyframes scorePop { 0% { opacity: 0; transform: translate(-50%, 6px); } 15% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 26px); } }
+.banner {
+  position: absolute; left: 0; white-space: nowrap; transform: translateX(-50%);
+  padding: 10px 20px; border-radius: 999px; font-family: var(--font-num); font-weight: 900;
+  font-size: clamp(16px, 4vmin, 28px); letter-spacing: .02em;
+  background: var(--surface); color: var(--text); box-shadow: var(--shadow-2);
+  animation: bannerIn .6s ease-out forwards;
+}
+.banner.round { bottom: calc(clamp(86px, 17vmin, 136px) / 2 + 52px); }
+.banner.callout { top: calc(clamp(86px, 17vmin, 136px) / 2 + 40px); font-size: clamp(14px, 3.2vmin, 22px); padding: 8px 16px; }
+.banner.big { font-size: clamp(26px, 7vmin, 52px); padding: 14px 28px; bottom: auto; top: 0; transform: translate(-50%, -50%); animation-duration: 1.4s; }
+.banner.perfect { background: linear-gradient(135deg, #FFE27A, #F5B700); color: #2B2100; }
+.banner.great { background: var(--great); color: #06210F; }
+.banner.good { background: var(--good); color: #fff; }
+.banner.break { background: var(--miss); color: #fff; }
+@keyframes bannerIn {
+  0% { opacity: 0; scale: .6; } 15% { opacity: 1; scale: 1.06; } 25% { scale: 1; } 80% { opacity: 1; } 100% { opacity: 0; scale: .96; }
+}
+.sparkles { position: absolute; left: 0; top: 0; }
+.sparkles i {
+  position: absolute; width: 8px; height: 8px; border-radius: 2px; left: -4px; top: -4px;
+  animation: spark 1s ease-out forwards;
+}
+@keyframes spark { from { transform: translate(0,0) rotate(0); opacity: 1; } to { transform: translate(var(--x), var(--y)) rotate(260deg); opacity: 0; } }
+
+/* 일시정지 오버레이 */
+.overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: grid; place-items: center; padding: 20px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  animation: fadeIn .2s ease-out;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.sheet {
+  width: min(380px, 100%); padding: 24px 20px; border-radius: 28px;
+  background: var(--surface); box-shadow: var(--shadow-2); border: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 10px; text-align: center;
+}
+.sheet h2 { margin: 0 0 6px; font-size: 24px; font-weight: 850; }
+.sheet .btn { width: 100%; }
+.sheet .sheet-row { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+
+/* =========================================================================
+   결과 화면
+   ========================================================================= */
+#screen-result { overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.result-wrap {
+  width: 100%; max-width: 1040px; margin: 0 auto; padding: 16px 16px 28px;
+  display: grid; gap: 14px; grid-template-columns: 1fr;
+}
+@media (min-width: 860px) {
+  .result-wrap { grid-template-columns: 1.05fr .95fr; align-items: start; padding-top: 28px; }
+  .result-head { grid-column: 1 / -1; }
+  .col-right { position: sticky; top: 16px; }
+}
+.result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.result-head h2 { margin: 0; font-family: var(--font-num); font-weight: 900; font-size: 22px; letter-spacing: .08em; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--text-sub);
+}
+.card {
+  background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius-card);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-1); padding: 16px;
+}
+.col { display: grid; gap: 14px; min-width: 0; }
+.score-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.score-row {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px;
+  padding: 10px 4px; border-bottom: 1px dashed var(--line);
+  opacity: 0; transform: translateX(-18px);
+  transition: opacity .3s ease-out, transform .35s var(--ease-out-back);
+}
+.score-row:last-child { border-bottom: 0; }
+.score-row.in { opacity: 1; transform: none; }
+.score-row .lbl { font-weight: 750; font-size: 15px; }
+.score-row .val { font-weight: 850; font-size: 20px; text-align: right; }
+.score-row .sub { grid-column: 1 / -1; font-size: 12.5px; color: var(--text-sub); font-weight: 600; }
+.score-row.special .val { color: var(--perfect); }
+.score-row.special.in .lbl { background: linear-gradient(90deg, var(--perfect), #FF9EB5, var(--perfect)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.6s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.score-row.penalty .val { color: var(--danger); }
+.score-row.mult .val { color: var(--accent); }
+.round-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.rb {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-num); font-weight: 900; font-size: 11px; color: #fff;
+  opacity: 0; transform: scale(1.8);
+}
+.rb.stamp { opacity: 1; transform: none; transition: transform .16s cubic-bezier(.2,1.6,.4,1), opacity .08s; }
+.rb.PERFECT { background: var(--perfect); color: #2B2100; }
+.rb.GREAT { background: var(--great); color: #06210F; }
+.rb.GOOD { background: var(--good); }
+.rb.BREAK { background: var(--miss); }
+
+.total-card { text-align: center; padding: 20px 16px 18px; position: relative; overflow: hidden; }
+.total-label { font-family: var(--font-num); font-weight: 900; letter-spacing: .14em; font-size: 13px; color: var(--text-sub); }
+.total-num { font-size: clamp(52px, 15vw, 88px); font-weight: 900; line-height: 1.05; margin: 4px 0; letter-spacing: -.04em; }
+.new-record {
+  display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--text); color: var(--bg);
+  font-weight: 850; font-size: 13px; animation: fadeIn .3s ease-out;
+}
+.meter { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 12px 0 6px; }
+.meter i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--pad-7), var(--pad-9), var(--pad-1), var(--pad-3)); transition: width 1s ease-out; }
+.achieve { font-size: 13px; color: var(--text-sub); font-weight: 700; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat { padding: 12px 14px; }
+.stat .k { font-size: 12.5px; color: var(--text-sub); font-weight: 700; }
+.stat .v { font-size: 20px; font-weight: 850; margin-top: 2px; }
+.stat.wide { grid-column: 1 / -1; }
+.dist-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--line); margin: 8px 0; }
+.dist-bar i { display: block; height: 100%; }
+.dist-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; font-weight: 700; }
+.dist-legend span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; background: var(--c); vertical-align: 0; }
+.fade-block { opacity: 0; transform: translateY(8px); transition: opacity .4s ease-out, transform .4s ease-out; }
+.fade-block.in { opacity: 1; transform: none; }
+.fade-block:not(.in) { pointer-events: none; }
+.share-thumb { display: block; width: 100%; max-width: 360px; margin: 0 auto; aspect-ratio: 4 / 5; border-radius: 16px; box-shadow: var(--shadow-2); background: var(--surface-2); object-fit: cover; }
+.result-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.result-buttons .btn { min-width: 0; width: 100%; font-size: 14.5px; padding: 10px 14px; }
+.result-buttons .btn-primary { grid-column: 1 / -1; min-height: 56px; font-size: 17px; }
+.skip-hint { text-align: center; font-size: 12.5px; color: var(--text-sub); font-weight: 600; animation: blink 1.4s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+
+/* =========================================================================
+   모달 (모바일: 바텀시트 / 넓은 화면: 다이얼로그)
+   ========================================================================= */
+.modal {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(20, 16, 36, .38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: fadeIn .2s ease-out;
+}
+.modal-panel {
+  width: min(560px, 100%); max-height: min(92dvh, 860px); overflow-y: auto; touch-action: pan-y;
+  background: var(--surface); border-radius: 28px 28px 0 0; box-shadow: var(--shadow-2);
+  padding: 10px 20px calc(20px + var(--safe-b));
+  animation: sheetUp .32s cubic-bezier(.2, .9, .3, 1.05);
+  position: relative; overscroll-behavior: contain;
+}
+.modal-panel::before { content: ''; display: block; width: 40px; height: 5px; border-radius: 99px; background: var(--line); margin: 0 auto 10px; }
+@media (min-width: 640px) and (min-height: 560px) {
+  .modal { align-items: center; padding: 24px; }
+  .modal-panel { border-radius: 28px; padding-bottom: 22px; animation: dialogIn .25s var(--ease-out-back); }
+  .modal-panel::before { display: none; }
+}
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes dialogIn { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 12px; }
+.modal-head h2 { margin: 0; font-size: 22px; font-weight: 850; }
+.set-group { margin: 14px 0 6px; font-size: 12.5px; font-weight: 800; color: var(--text-sub); letter-spacing: .04em; }
+.set-list { background: var(--surface-2); border-radius: 18px; padding: 4px 14px; }
+.set-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.set-item:last-child { border-bottom: 0; }
+.set-item.col { flex-direction: column; align-items: stretch; gap: 8px; }
+.set-item .lab { font-weight: 700; font-size: 15px; }
+.set-item .hint { font-size: 12px; color: var(--text-sub); font-weight: 500; margin-top: 2px; }
+.set-item output { font-family: var(--font-num); font-weight: 800; font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+.range-row { display: flex; align-items: center; gap: 12px; }
+input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-action: pan-x; }
+.switch { position: relative; width: 52px; height: 32px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--line); transition: background .2s; pointer-events: none; }
+.switch span::after { content: ''; position: absolute; left: 3px; top: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: transform .22s var(--ease-out-back); }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(20px); }
+.switch input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+.seg-ctl { display: flex; background: var(--line); padding: 3px; border-radius: 12px; gap: 2px; }
+.seg-ctl button { flex: 1; min-height: 36px; border: 0; border-radius: 9px; background: transparent; font-weight: 700; font-size: 13.5px; padding: 4px 8px; }
+.seg-ctl button[aria-pressed="true"] { background: var(--surface); box-shadow: var(--shadow-1); }
+.set-item select { min-height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); padding: 4px 10px; font-weight: 700; }
+.how-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.how-list li { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 18px; background: var(--surface-2); font-weight: 700; font-size: 15.5px; line-height: 1.4; }
+.how-list .ic { flex: none; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 24px; }
+.mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 40px; height: 40px; }
+.mini-grid b { border-radius: 5px; display: grid; place-items: center; font-family: var(--font-num); font-size: 11px; color: var(--pad-ink); }
+.modal-foot { margin-top: 16px; display: flex; gap: 10px; }
+.modal-foot .btn { flex: 1; }
+
+/* 타이밍 보정 */
+.calib { display: grid; gap: 14px; text-align: center; }
+.calib-pad {
+  height: min(42vh, 280px); border-radius: 28px; border: 0; width: 100%;
+  background: radial-gradient(120% 90% at 30% 0%, rgba(255,255,255,.5), transparent 55%), var(--pad-9);
+  color: var(--pad-ink); font-size: 20px; font-weight: 850; touch-action: none;
+  display: grid; place-items: center; box-shadow: inset 0 -6px 0 rgba(0,0,0,.08);
+  transition: transform .06s;
+}
+.calib-pad:active { transform: scale(.97); }
+.calib-dots { display: flex; justify-content: center; gap: 8px; }
+.calib-dots i { width: 14px; height: 14px; border-radius: 50%; background: var(--line); transition: background .1s, transform .1s; }
+.calib-dots i.beat { background: var(--text-sub); transform: scale(1.2); }
+.calib-dots i.lead { opacity: .5; }
+.calib-dots i.hit { background: var(--great); }
+.calib-status { font-weight: 800; min-height: 1.4em; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + var(--safe-b)); z-index: 80;
+  transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  padding: 12px 20px; border-radius: 999px; background: var(--text); color: var(--bg);
+  font-weight: 750; font-size: 14.5px; box-shadow: var(--shadow-2);
+  transition: opacity .25s, transform .3s var(--ease-out-back); max-width: calc(100vw - 32px); text-align: center;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  .bg-blobs i { animation: none; }
+  .judge-pop { animation: judgePopRM .45s steps(1) forwards !important; animation-duration: .45s !important; }
+  @keyframes judgePopRM { 0% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+}
+</style>
+</head>
+<body>
+<div class="bg-blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+<div id="app">
+  <!-- ================= 시작 화면 ================= -->
+  <section id="screen-title" class="screen active" aria-labelledby="title-h1">
+    <header class="topbar">
+      <label class="pill-select"><span aria-hidden="true">🌐</span>
+        <select class="lang-select" data-i18n-aria="language"></select>
+      </label>
+      <button class="icon-btn theme-toggle" type="button" data-i18n-aria="theme">☀️</button>
+    </header>
+    <div class="title-main">
+      <div class="logo-mark" aria-hidden="true"><span>♩</span><span>♪</span><span>♪</span><span>♩</span></div>
+      <div class="title-text">
+        <h1 id="title-h1" data-i18n="title">리듬 마스터 챌린지</h1>
+        <p data-i18n="tagline"></p>
+      </div>
+      <div class="best-card" id="title-best" hidden><span>🏆</span><span data-i18n="bestScore"></span><b class="num" id="title-best-n"></b></div>
+      <div class="challenge-card" id="challenge-card" hidden>
+        <div style="font-size:28px" aria-hidden="true">🥁</div>
+        <div class="c-body"><b data-i18n="challengeBanner"></b><span id="challenge-info"></span></div>
+        <button class="btn" type="button" id="btn-clear-challenge" data-i18n="clearChallenge"></button>
+      </div>
+      <div class="title-actions">
+        <button class="btn btn-primary btn-big" type="button" id="btn-start"><span data-i18n="start"></span></button>
+        <div class="row">
+          <button class="btn" type="button" id="btn-howto">📖 <span data-i18n="howTo"></span></button>
+          <button class="btn" type="button" id="btn-settings">⚙️ <span data-i18n="settings"></span></button>
+        </div>
+      </div>
+    </div>
+    <footer class="title-foot">
+      <p class="kbd-only" data-i18n="pcHint"></p>
+      <p class="kbd-only" data-i18n="altKeyHint"></p>
+      <p class="warn" id="no-audio-msg" data-i18n="noAudio" hidden></p>
+      <p id="ios-msg" data-i18n="iosMute" hidden></p>
+    </footer>
+  </section>
+
+  <!-- ================= 플레이 화면 ================= -->
+  <section id="screen-game" class="screen" aria-label="game">
+    <div class="stage">
+      <div class="pads" id="pads"></div>
+      <button class="hub" type="button" id="hub" data-i18n-aria="pause">
+        <svg viewBox="0 0 100 100" aria-hidden="true" id="hub-svg"></svg>
+        <div class="hub-inner">
+          <span class="hub-round" id="hub-round">1/8</span>
+          <span class="hub-score num" id="hub-score">0</span>
+          <span class="hub-count" id="hub-count" hidden>4</span>
+        </div>
+      </button>
+      <div class="float-layer" id="float-layer" aria-live="polite">
+        <div class="combo-chip" id="combo-chip" hidden></div>
+      </div>
+    </div>
+    <div class="overlay" id="pause-overlay" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pause-h">
+        <h2 id="pause-h" data-i18n="paused"></h2>
+        <button class="btn btn-primary" type="button" id="btn-resume">▶ <span data-i18n="resume"></span></button>
+        <button class="btn" type="button" id="btn-pause-retry" data-i18n="retry"></button>
+        <button class="btn" type="button" id="btn-pause-home" data-i18n="home"></button>
+        <div class="sheet-row">
+          <label class="pill-select"><span aria-hidden="true">🌐</span><select class="lang-select" data-i18n-aria="language"></select></label>
+          <button class="icon-btn theme-toggle" type="button" data-i18n-aria="theme">☀️</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 결과 화면 ================= -->
+  <section id="screen-result" class="screen" aria-labelledby="result-h">
+    <div class="result-wrap">
+      <div class="result-head">
+        <h2 id="result-h">RESULT</h2>
+        <span class="chip num" id="result-meta"></span>
+      </div>
+      <div class="col">
+        <div class="card">
+          <ul class="score-rows" id="score-rows"></ul>
+        </div>
+        <div class="card total-card">
+          <div class="total-label" data-i18n="totalScore"></div>
+          <div class="total-num num" id="total-num">0</div>
+          <div class="new-record" id="new-record" hidden data-i18n="newRecord"></div>
+          <div class="fade-block" id="achieve-block">
+            <div class="meter"><i id="achieve-meter"></i></div>
+            <div class="achieve num" id="achieve-text"></div>
+          </div>
+        </div>
+        <div class="skip-hint" id="skip-hint" data-i18n="tapToSkip"></div>
+      </div>
+      <div class="col col-right fade-block" id="result-extra">
+        <div class="stats">
+          <div class="card stat"><div class="k" data-i18n="accuracy"></div><div class="v num" id="st-acc"></div></div>
+          <div class="card stat"><div class="k" data-i18n="maxCombo"></div><div class="v num" id="st-combo"></div></div>
+          <div class="card stat wide"><div class="k" data-i18n="timing"></div><div class="v" id="st-tendency"></div></div>
+          <div class="card stat wide">
+            <div class="k" data-i18n="distribution"></div>
+            <div class="dist-bar" id="dist-bar"></div>
+            <div class="dist-legend num" id="dist-legend"></div>
+          </div>
+          <div class="card stat"><div class="k" data-i18n="bestScore"></div><div class="v num" id="st-best"></div></div>
+          <div class="card stat"><div class="k" data-i18n="maxPossible"></div><div class="v num" id="st-max"></div></div>
+          <div class="card stat wide" id="st-server-card" hidden><div class="v" id="st-server" style="font-size:15px"></div></div>
+        </div>
+        <img class="share-thumb" id="share-thumb" alt="">
+        <div class="result-buttons">
+          <button class="btn btn-primary" type="button" id="btn-retry">↻ <span data-i18n="retry"></span></button>
+          <button class="btn" type="button" id="btn-share">📸 <span data-i18n="saveShare"></span></button>
+          <button class="btn" type="button" id="btn-challenge">🔗 <span data-i18n="challengeLink"></span></button>
+          <button class="btn btn-ghost" type="button" id="btn-home" style="grid-column:1/-1">🏠 <span data-i18n="home"></span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= 방법 보기 ================= -->
+<div class="modal" id="modal-howto" hidden>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="howto-h">
+    <div class="modal-head"><h2 id="howto-h" data-i18n="howTo"></h2>
+      <button class="icon-btn" type="button" data-close data-i18n-aria="close">✕</button></div>
+    <ol class="how-list">
+      <li><span class="ic" style="background:var(--pad-7)">♩</span><span data-i18n="how1"></span></li>
+      <li><span class="ic" style="background:var(--surface)">◔</span><span data-i18n="how2"></span></li>
+      <li><span class="ic" style="background:var(--surface)"><span class="mini-grid"><b style="background:var(--pad-7)">7</b><b style="background:var(--pad-9)">9</b><b style="background:var(--pad-1)">1</b><b style="background:var(--pad-3)">3</b></span></span><span data-i18n="how3"></span></li>
+      <li><span class="ic" style="background:var(--surface)">⏸</span><span data-i18n="how4"></span></li>
+    </ol>
+    <div class="modal-foot"><button class="btn btn-primary" type="button" data-close data-i18n="gotIt"></button></div>
+  </div>
+</div>
+
+<!-- ================= 설정 ================= -->
+<div class="modal" id="modal-settings" hidden>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="settings-h">
+    <div class="modal-head"><h2 id="settings-h" data-i18n="settings"></h2>
+      <button class="icon-btn" type="button" data-close data-i18n-aria="close">✕</button></div>
+
+    <div id="settings-main">
+      <div class="set-group" data-i18n="gameplay"></div>
+      <div class="set-list">
+        <div class="set-item col">
+          <div class="range-row"><span class="lab" data-i18n="difficulty"></span></div>
+          <div class="seg-ctl" id="set-level">
+            <button type="button" data-v="easy" data-i18n="easy"></button>
+            <button type="button" data-v="normal" data-i18n="normal"></button>
+            <button type="button" data-v="hard" data-i18n="hard"></button>
+          </div>
+        </div>
+        <div class="set-item col">
+          <div class="range-row"><span class="lab" data-i18n="bpm"></span><span style="flex:1"></span><output id="out-bpm" class="num"></output></div>
+          <input type="range" id="set-bpm" min="60" max="140" step="5" data-i18n-aria="bpm">
+        </div>
+      </div>
+
+      <div class="set-group" data-i18n="sound"></div>
+      <div class="set-list">
+        <div class="set-item"><span class="lab" data-i18n="metronome"></span>
+          <label class="switch"><input type="checkbox" id="set-metronome" data-i18n-aria="metronome"><span></span></label></div>
+        <div class="set-item col">
+          <div class="range-row"><span class="lab" data-i18n="volume"></span><span style="flex:1"></span><output id="out-volume" class="num"></output></div>
+          <input type="range" id="set-volume" min="0" max="100" step="5" data-i18n-aria="volume">
+        </div>
+        <div class="set-item col">
+          <div class="range-row"><div><div class="lab" data-i18n="calibration"></div><div class="hint" data-i18n="offsetHint"></div></div><span style="flex:1"></span><output id="out-offset" class="num"></output></div>
+          <input type="range" id="set-offset" min="-300" max="300" step="5" data-i18n-aria="offset">
+          <button class="btn" type="button" id="btn-calib">🎧 <span data-i18n="calibStart"></span></button>
+        </div>
+        <div class="set-item" id="vibration-item"><span class="lab" data-i18n="vibration"></span>
+          <label class="switch"><input type="checkbox" id="set-vibration" data-i18n-aria="vibration"><span></span></label></div>
+      </div>
+
+      <div class="set-group" data-i18n="display"></div>
+      <div class="set-list">
+        <div class="set-item"><span class="lab" data-i18n="language"></span>
+          <select class="lang-select" data-i18n-aria="language"></select></div>
+        <div class="set-item col">
+          <span class="lab" data-i18n="theme"></span>
+          <div class="seg-ctl" id="set-theme">
+            <button type="button" data-v="system" data-i18n="themeSystem"></button>
+            <button type="button" data-v="light" data-i18n="themeLight"></button>
+            <button type="button" data-v="dark" data-i18n="themeDark"></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary" type="button" data-close data-i18n="close"></button></div>
+    </div>
+
+    <div id="calib-panel" class="calib" hidden>
+      <p style="margin:0;font-weight:700" data-i18n="calibrationGuide"></p>
+      <div class="calib-dots" id="calib-dots"></div>
+      <button class="calib-pad" type="button" id="calib-pad">TAP</button>
+      <div class="calib-status" id="calib-status"></div>
+      <div class="modal-foot"><button class="btn" type="button" id="btn-calib-cancel" data-i18n="cancel"></button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* =========================================================================
+   1. CONFIG
+   ========================================================================= */
+const CONFIG = {
+  TOTAL_ROUNDS: 8,
+  BEATS_PER_ROUND: 4,
+  COUNT_IN_BEATS: 4,
+  GAP_BARS_BETWEEN_ROUNDS: 0,
+  DEFAULT_BPM: 90,
+  LEVEL_DEFAULT_BPM: { easy: 75, normal: 90, hard: 90 },
+  BPM_MIN: 60, BPM_MAX: 140,
+  OFFSET_MAX_MS: 300,
+  PAD_IDS: [7, 9, 1, 3],
+  ACTIVE_PADS_BY_ROUND: [[7, 9], [7, 9], [7, 9, 1], [7, 9, 1], [7, 9, 1, 3], [7, 9, 1, 3], [7, 9, 1, 3], [7, 9, 1, 3]],
+  RANDOMIZE_ACTIVE_PADS: false,
+  WINDOWS_MS: { perfect: 45, great: 90, good: 140 },
+  START_DELAY_S: 0.1,
+  SCHED_INTERVAL_MS: 25,
+  SCHED_LOOKAHEAD_S: 0.1,
+  CHATTER_MS: 30,
+  PULSE_S: 0.15,
+  COMBO_CALLOUTS: [5, 10, 20],
+  SCORING: {
+    hit: { perfect: 1000, great: 500, good: 200, miss: 0 },
+    wrongHit: -300,
+    roundBonus: { 0: 2000, 1: 1000, 2: 400, else: 0 },
+    roundWeight: [1, 1, 1.5, 1.5, 2, 2, 2, 2],
+    perfectCombo: [
+      { min: 2, max: 4, step: 100 },          // 100 × (n − 1)
+      { min: 5, max: 9, perHit: 500 },
+      { min: 10, max: 19, perHit: 800 },
+      { min: 20, max: Infinity, perHit: 1000 },
+    ],
+    milestone: { 10: 2000, 20: 5000 },
+    fullPerfect: 20000, noMiss: 3000,
+    levelMul: { easy: 0.8, normal: 1.0, hard: 1.3 },
+    bpmMul: { base: 90, min: 0.7, max: 1.5 },
+  },
+};
+const LEVELS = ['easy', 'normal', 'hard'];
+const W = { perfect: CONFIG.WINDOWS_MS.perfect / 1000, great: CONFIG.WINDOWS_MS.great / 1000, good: CONFIG.WINDOWS_MS.good / 1000 };
+const reducedMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const $ = (s, root = document) => root.querySelector(s);
+const $$ = (s, root = document) => Array.from(root.querySelectorAll(s));
+
+/* =========================================================================
+   2. rng — 시드 기반 난수 (mulberry32)
+   ========================================================================= */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function makeRng(seed) {
+  const r = mulberry32(seed >>> 0);
+  return {
+    next: r,
+    int: n => Math.floor(r() * n),
+    pick: arr => arr[Math.floor(r() * arr.length)],
+    chance: p => r() < p,
+    shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
+  };
+}
+function randomSeed() {
+  try { const u = new Uint32Array(1); crypto.getRandomValues(u); return 10000000 + (u[0] % 90000000); }
+  catch (e) { return 10000000 + Math.floor(Math.random() * 90000000); }
+}
+
+/* =========================================================================
+   3. PatternGenerator — 라운드별 패턴 생성
+   ========================================================================= */
+const PatternGenerator = {
+  generate(seed, level) {
+    const rng = makeRng(seed);
+    const sets = this.activeSets(rng);
+    const rounds = [];
+    let prevKey = null;
+    for (let r = 0; r < CONFIG.TOTAL_ROUNDS; r++) {
+      const pads = sets[r];
+      const newPads = r > 0 ? pads.filter(p => !sets[r - 1].includes(p)) : [];
+      const eighths = level === 'hard' && r >= 4;
+      let notes = null, key = null;
+      for (let attempt = 0; attempt < 800 && !notes; attempt++) {
+        const cand = this.tryRound(rng, r, pads, level);
+        if (!cand) continue;
+        const k = this.keyOf(cand);
+        if (k === prevKey) continue;
+        notes = cand; key = k;
+      }
+      if (!notes) { notes = this.fallback(r, pads, prevKey); key = this.keyOf(notes); }
+      prevKey = key;
+      rounds.push({ index: r, pads, newPads, subdiv: eighths ? 8 : 4, notes });
+    }
+    return rounds;
+  },
+  activeSets(rng) {
+    const base = CONFIG.ACTIVE_PADS_BY_ROUND;
+    if (!CONFIG.RANDOMIZE_ACTIVE_PADS) return base.map(s => s.slice());
+    const order = rng.shuffle(CONFIG.PAD_IDS);
+    return base.map(s => order.slice(0, s.length));
+  },
+  keyOf(notes) { return notes.map(n => n.beatPos + ':' + n.padId).join(','); },
+  hasTriple(notes) {
+    const seq = notes.filter(n => !n.chord).sort((a, b) => a.beatPos - b.beatPos).map(n => n.padId);
+    for (let i = 2; i < seq.length; i++) if (seq[i] === seq[i - 1] && seq[i] === seq[i - 2]) return true;
+    return false;
+  },
+  tryRound(rng, r, pads, level) {
+    const allowRest = level !== 'easy';
+    const seq = [];
+    let rests = 0;
+    for (let s = 0; s < 4; s++) {
+      if (allowRest && s > 0 && rests < 1 && rng.chance(0.22)) { seq.push(null); rests++; continue; }
+      seq.push(rng.pick(pads));
+    }
+    if (!pads.every(p => seq.includes(p))) return null;       // 활성 패드 모두 1회 이상
+    const notes = [];
+    seq.forEach((p, i) => { if (p != null) notes.push({ beatPos: i, padId: p, eighth: false, chord: false }); });
+    if (level === 'hard' && r >= 4) {
+      // 8분음표 쌍: R5~6 최대 1쌍, R7~8 최대 2쌍
+      const maxPairs = r >= 6 ? 2 : 1;
+      const pairs = r >= 6 ? 1 + rng.int(maxPairs) : 1;
+      const cands = rng.shuffle(notes.map(n => n.beatPos));
+      for (let k = 0; k < pairs && k < cands.length; k++) {
+        const b = cands[k];
+        const first = notes.find(n => n.beatPos === b);
+        first.eighth = true;
+        notes.push({ beatPos: b + 0.5, padId: rng.pick(pads), eighth: true, chord: false });
+      }
+      if (r === 7) {
+        // R8만 동시타 1회
+        const quarter = notes.filter(n => Number.isInteger(n.beatPos));
+        const host = rng.pick(quarter);
+        const others = pads.filter(p => p !== host.padId);
+        host.chord = false;
+        notes.push({ beatPos: host.beatPos, padId: rng.pick(others), eighth: host.eighth, chord: true });
+      }
+    }
+    if (this.hasTriple(notes)) return null;
+    notes.sort((a, b) => a.beatPos - b.beatPos || CONFIG.PAD_IDS.indexOf(a.padId) - CONFIG.PAD_IDS.indexOf(b.padId));
+    return notes;
+  },
+  fallback(r, pads, prevKey) {
+    for (let shift = 0; shift < pads.length; shift++) {
+      const notes = [0, 1, 2, 3].map(i => ({ beatPos: i, padId: pads[(i + shift) % pads.length], eighth: false, chord: false }));
+      if (this.keyOf(notes) !== prevKey) return notes;
+    }
+    return [0, 1, 2, 3].map(i => ({ beatPos: i, padId: pads[i % pads.length], eighth: false, chord: false }));
+  },
+};
+
+/* =========================================================================
+   4. AudioEngine — 둥 소리·틱·효과음 (Web Audio 합성, 외부 파일 없음)
+   ========================================================================= */
+const DRUM_VOICES = { 7: [520, 260, 0.18], 9: [400, 200, 0.20], 1: [300, 150, 0.23], 3: [220, 110, 0.26] };
+const AudioEngine = {
+  supported: !!(window.AudioContext || window.webkitAudioContext),
+  ctx: null, master: null, comp: null, noise: null,
+  useCtx: false,          // 게임 시계로 오디오 시계를 쓸지 (재생 가능할 때만)
+  volume: 0.8,
+  async ensure() {
+    if (!this.supported) { this.useCtx = false; return false; }
+    try {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC({ latencyHint: 'interactive' });
+        const ctx = this.ctx;
+        this.comp = ctx.createDynamicsCompressor();
+        this.comp.threshold.value = -14; this.comp.knee.value = 12; this.comp.ratio.value = 6;
+        this.comp.attack.value = 0.002; this.comp.release.value = 0.12;
+        this.master = ctx.createGain();
+        this.master.gain.value = this.volume;
+        this.comp.connect(this.master); this.master.connect(ctx.destination);
+        // 노이즈 버퍼는 최초 1회만 생성해 재사용
+        const len = Math.floor(ctx.sampleRate * 0.03);
+        this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
+        const d = this.noise.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        // iOS 잠금 해제용 무음 버퍼
+        const silent = ctx.createBufferSource();
+        silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+        silent.connect(ctx.destination); silent.start(0);
+        ctx.onstatechange = () => { if (ctx.state !== 'running') App.onAudioInterrupted(); };
+      }
+      if (this.ctx.state !== 'running') {
+        await Promise.race([this.ctx.resume(), new Promise(r => setTimeout(r, 600))]);
+      }
+    } catch (e) {
+      console.warn('AudioContext unavailable', e);
+    }
+    this.useCtx = !!(this.ctx && this.ctx.state === 'running');
+    return this.useCtx;
+  },
+  setVolume(v) {
+    this.volume = v;
+    if (this.master) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.015);
+  },
+  /** 스케줄링 기준 시계 (초) */
+  now() { return this.useCtx ? this.ctx.currentTime : performance.now() / 1000; },
+  /** perfMs(performance.now 기준) 시점에 "귀에 들리고 있던" 오디오 시각 */
+  audible(perfMs) {
+    const pnow = performance.now();
+    if (perfMs == null) perfMs = pnow;
+    if (!this.useCtx) return perfMs / 1000;
+    const ctx = this.ctx;
+    const ref = ctx.currentTime - (pnow - perfMs) / 1000;
+    if (ctx.getOutputTimestamp) {
+      const ts = ctx.getOutputTimestamp();
+      if (ts && ts.contextTime > 0 && ts.performanceTime > 0) {
+        const est = ts.contextTime + (perfMs - ts.performanceTime) / 1000;
+        if (est <= ref + 0.02 && est >= ref - 0.5) return est;
+      }
+    }
+    const lat = (ctx.outputLatency > 0 ? ctx.outputLatency : 0) || ctx.baseLatency || 0;
+    return ref - lat;
+  },
+  _env(g, t, peak, dur) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  },
+  _tone(type, f0, f1, t, dur, peak, glide) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + (glide || dur));
+    this._env(g, t, peak, dur);
+    o.connect(g); g.connect(this.comp);
+    o.start(t); o.stop(t + dur + 0.03);
+  },
+  drum(padId, sparkle) {
+    if (!this.useCtx) return;
+    const [f0, f1, dur] = DRUM_VOICES[padId];
+    const t = this.ctx.currentTime;
+    this._tone('sine', f0, f1, t, dur, 0.9, 0.12);                   // 말랑한 몸통
+    this._tone('triangle', f0 * 2, f1 * 2, t, dur * 0.6, 0.09, 0.12); // "뿅" 배음
+    const n = this.ctx.createBufferSource(); n.buffer = this.noise;    // "톡" 클릭
+    const bp = this.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2000; bp.Q.value = 1.2;
+    const ng = this.ctx.createGain(); this._env(ng, t, 0.25, 0.009);
+    n.connect(bp); bp.connect(ng); ng.connect(this.comp); n.start(t); n.stop(t + 0.02);
+    if (sparkle) this._tone('sine', 1500, 1500, t + 0.005, 0.04, 0.08);
+  },
+  tick(t, accent, countIn) {
+    if (!this.useCtx) return;
+    const f = accent ? 1500 : 1000;
+    const peak = (accent ? 0.32 : 0.16) * (countIn ? 1.15 : 1);
+    this._tone('sine', f, f, t, accent ? 0.03 : 0.025, peak);
+  },
+  pop(t) { if (this.useCtx) this._tone('sine', 600, 900, t ?? this.ctx.currentTime, 0.08, 0.12, 0.08); },
+  countTick(progress) {
+    if (!this.useCtx) return;
+    const f = 1800 + 800 * clamp(progress, 0, 1);
+    this._tone('sine', f, f, this.ctx.currentTime, 0.015, 0.05);
+  },
+  arpeggio(t) {
+    if (!this.useCtx) return;
+    t = t ?? this.ctx.currentTime;
+    [1047, 1319, 1568].forEach((f, i) => this._tone('triangle', f, f, t + i * 0.06, 0.09, 0.12));
+  },
+  buu(t) {
+    if (!this.useCtx) return;
+    t = t ?? this.ctx.currentTime;
+    const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(300, t); o.frequency.linearRampToValueAtTime(360, t + 0.07);
+    o.frequency.exponentialRampToValueAtTime(190, t + 0.28);
+    this._env(g, t, 0.2, 0.3); o.connect(g); g.connect(this.comp); o.start(t); o.stop(t + 0.33);
+  },
+  milestone() {
+    if (!this.useCtx) return;
+    const t = this.ctx.currentTime;
+    [880, 1319].forEach((f, i) => this._tone('triangle', f, f, t + i * 0.07, 0.1, 0.1));
+  },
+  fanfare() {
+    if (!this.useCtx) return;
+    const t = this.ctx.currentTime;
+    [784, 988, 1175, 1568].forEach((f, i) => this._tone('triangle', f, f, t + i * 0.08, 0.16, 0.12));
+  },
+  tap() { if (this.useCtx) this._tone('sine', 900, 700, this.ctx.currentTime, 0.03, 0.06); },
+};
+
+/* =========================================================================
+   9. Storage — 설정 / 최고 기록 (localStorage 실패해도 기본값으로 동작)
+   ========================================================================= */
+const Storage = {
+  get(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
+  set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; } },
+};
+const DEFAULT_SETTINGS = { bpm: 90, metronome: true, volume: 0.8, level: 'normal', offsetMs: 0, vibration: true, lang: null, theme: 'system' };
+const Settings = {
+  data: Object.assign({}, DEFAULT_SETTINGS),
+  load() {
+    const s = Storage.get('rmc.settings.v1', {});
+    const d = Object.assign({}, DEFAULT_SETTINGS, s && typeof s === 'object' ? s : {});
+    d.bpm = clamp(Math.round((+d.bpm || 90) / 5) * 5, CONFIG.BPM_MIN, CONFIG.BPM_MAX);
+    d.volume = clamp(+d.volume, 0, 1); if (!isFinite(d.volume)) d.volume = 0.8;
+    d.offsetMs = clamp(Math.round(+d.offsetMs || 0), -CONFIG.OFFSET_MAX_MS, CONFIG.OFFSET_MAX_MS);
+    if (!LEVELS.includes(d.level)) d.level = 'normal';
+    if (!['system', 'light', 'dark'].includes(d.theme)) d.theme = 'system';
+    this.data = d;
+  },
+  save() { Storage.set('rmc.settings.v1', this.data); },
+  set(k, v) { this.data[k] = v; this.save(); },
+};
+
+/* =========================================================================
+   10. I18n — 번역 사전 / t(key, params) / 언어 전환
+   ========================================================================= */
+const I18N = {
+  ko: {
+    title: '리듬 마스터 챌린지', tagline: '두근거리는 패드를 박자에 맞춰 톡!',
+    start: '시작하기', howTo: '방법 보기', settings: '설정',
+    pcHint: 'PC: 키패드 7 · 9 · 1 · 3 으로 플레이', altKeyHint: '키패드가 없다면 Q · W · A · S',
+    how1: '패드가 두근거릴 때 눌러요!', how2: '가운데 링이 박자를 알려줘요 (1-2-3-4)',
+    how3: 'PC는 키패드 7 9 1 3 — 패드 위치 그대로!', how4: '가운데 동그라미를 누르면 일시정지해요',
+    countIn: '준비…', newPad: 'NEW!', next: 'NEXT', allPerfect: 'ALL PERFECT!',
+    paused: '일시정지', resume: '계속하기', retry: '다시 하기', home: '처음으로',
+    saveShare: '이미지 저장/공유', challengeLink: '같은 리듬으로 도전하기', linkCopied: '링크가 복사됐어요!',
+    newRecord: '최고 기록!', accuracy: '정확도', maxCombo: '최대 퍼펙트 콤보',
+    tendencyLate: '살짝 느려요 🐢', tendencyEarly: '살짝 급해요 🐇', tendencyOn: '정박 장인 🎯',
+    scoreHit: '정박 점수', scoreRound: '라운드 보너스', scoreCombo: '퍼펙트 콤보 보너스', scoreSpecial: '특별 보너스',
+    scorePenalty: '헛치기 감점', scoreMultiplier: '배율', totalScore: '총점', maxPossible: '최대 점수',
+    bestScore: '내 최고 점수', noMiss: '노미스!', tapToSkip: '탭하면 건너뛰기',
+    bpm: 'BPM', difficulty: '난이도', easy: '쉬움', normal: '보통', hard: '어려움',
+    metronome: '메트로놈 소리', volume: '효과음 볼륨', calibration: '타이밍 보정',
+    calibrationGuide: '소리에 맞춰 8번 탭해 주세요', vibration: '진동', language: '언어', theme: '테마',
+    themeSystem: '시스템', themeLight: '라이트', themeDark: '다크',
+    noAudio: '이 브라우저는 소리를 지원하지 않아요', iosMute: '소리가 안 나면 무음모드를 해제해 주세요',
+    shareText: '리듬 마스터 챌린지에서 {score}점! 같은 리듬으로 나를 넘어봐 🥁',
+    padLabel: '패드 {n}', pause: '일시정지', close: '닫기', gotIt: '알겠어요!',
+    offset: '타이밍 보정값', offsetHint: '＋값이면 늦게 쳐도 정박으로 인정돼요 (블루투스 이어폰 권장)',
+    calibStart: '자동 보정 시작', calibListen: '처음 4박은 들어만 보세요…', calibTap: '지금부터 탭! ({n}/8)',
+    calibDone: '보정 완료: {ms}ms', calibFail: '탭이 부족했어요. 다시 해 볼까요?', cancel: '취소',
+    challengeBanner: '친구의 도전장!', challengeInfo: '#{seed} · BPM {bpm} · {level}', clearChallenge: '새 리듬으로',
+    wrongHitCount: '헛치기 {n}회', avgTiming: '평균 {ms}ms', distribution: '판정 분포',
+    challengeCode: '같은 리듬 도전 코드 #{seed}', serverStats: '🌏 이 리듬 도전 {plays}회 · 상위 {pct}%',
+    imageSaved: '이미지를 저장했어요!', copyFail: '링크를 복사하지 못했어요', timing: '타이밍 성향',
+    gameplay: '게임', sound: '사운드', display: '화면', maxComboN: '최대 퍼펙트 콤보 {n}',
+  },
+  en: {
+    title: 'Rhythm Master Challenge', tagline: 'Tap the pulsing pads right on the beat!',
+    start: 'Start', howTo: 'How to Play', settings: 'Settings',
+    pcHint: 'PC: Play with Numpad 7 · 9 · 1 · 3', altKeyHint: 'No numpad? Use Q · W · A · S',
+    how1: 'Tap the pad when it pulses!', how2: 'The center ring shows the beat (1-2-3-4)',
+    how3: 'On PC, Numpad 7 9 1 3 — same layout!', how4: 'Tap the center circle to pause',
+    countIn: 'Get ready…', newPad: 'NEW!', next: 'NEXT', allPerfect: 'ALL PERFECT!',
+    paused: 'Paused', resume: 'Resume', retry: 'Play Again', home: 'Home',
+    saveShare: 'Save / Share Image', challengeLink: 'Challenge a Friend (Same Rhythm)', linkCopied: 'Link copied!',
+    newRecord: 'NEW RECORD!', accuracy: 'Accuracy', maxCombo: 'Max Perfect Combo',
+    tendencyLate: 'A bit late 🐢', tendencyEarly: 'A bit early 🐇', tendencyOn: 'Right on the beat 🎯',
+    scoreHit: 'Timing Score', scoreRound: 'Round Bonus', scoreCombo: 'Perfect Combo Bonus', scoreSpecial: 'Special Bonus',
+    scorePenalty: 'Wrong Hit Penalty', scoreMultiplier: 'Multiplier', totalScore: 'TOTAL', maxPossible: 'Max Possible',
+    bestScore: 'My Best', noMiss: 'NO MISS!', tapToSkip: 'Tap to skip',
+    bpm: 'BPM', difficulty: 'Difficulty', easy: 'Easy', normal: 'Normal', hard: 'Hard',
+    metronome: 'Metronome', volume: 'Sound Volume', calibration: 'Timing Calibration',
+    calibrationGuide: 'Tap 8 times along with the beat', vibration: 'Vibration', language: 'Language', theme: 'Theme',
+    themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark',
+    noAudio: "Sound isn't supported in this browser", iosMute: 'No sound? Turn off silent mode',
+    shareText: 'I scored {score} on Rhythm Master Challenge! Beat me on the same rhythm 🥁',
+    padLabel: 'Pad {n}', pause: 'Pause', close: 'Close', gotIt: 'Got it!',
+    offset: 'Timing offset', offsetHint: 'Positive = late hits count as on-beat (for Bluetooth audio)',
+    calibStart: 'Auto Calibrate', calibListen: 'Just listen to the first 4 beats…', calibTap: 'Tap now! ({n}/8)',
+    calibDone: 'Calibrated: {ms}ms', calibFail: 'Not enough taps. Try again?', cancel: 'Cancel',
+    challengeBanner: 'A friend challenged you!', challengeInfo: '#{seed} · BPM {bpm} · {level}', clearChallenge: 'New rhythm',
+    wrongHitCount: '{n} wrong hits', avgTiming: 'Avg {ms}ms', distribution: 'Judgments',
+    challengeCode: 'Same-rhythm code #{seed}', serverStats: '🌏 {plays} plays on this rhythm · Top {pct}%',
+    imageSaved: 'Image saved!', copyFail: "Couldn't copy the link", timing: 'Timing tendency',
+    gameplay: 'Gameplay', sound: 'Sound', display: 'Display', maxComboN: 'Max perfect combo {n}',
+  },
+  zh: {
+    title: '节奏大师挑战', tagline: '跟着节拍点击跳动的鼓垫！',
+    start: '开始', howTo: '玩法说明', settings: '设置',
+    pcHint: '电脑：使用小键盘 7 · 9 · 1 · 3', altKeyHint: '没有小键盘？用 Q · W · A · S',
+    how1: '鼓垫跳动时点击！', how2: '中间的圆环显示节拍 (1-2-3-4)',
+    how3: '电脑用小键盘 7 9 1 3 — 位置一致！', how4: '点击中间的圆圈暂停',
+    countIn: '准备…', newPad: 'NEW!', next: 'NEXT', allPerfect: 'ALL PERFECT!',
+    paused: '已暂停', resume: '继续', retry: '再来一次', home: '返回首页',
+    saveShare: '保存/分享图片', challengeLink: '用同样的节奏挑战好友', linkCopied: '链接已复制！',
+    newRecord: '新纪录！', accuracy: '准确率', maxCombo: '最大完美连击',
+    tendencyLate: '稍微慢了 🐢', tendencyEarly: '稍微急了 🐇', tendencyOn: '节拍达人 🎯',
+    scoreHit: '节拍得分', scoreRound: '回合奖励', scoreCombo: '完美连击奖励', scoreSpecial: '特别奖励',
+    scorePenalty: '误击扣分', scoreMultiplier: '倍率', totalScore: '总分', maxPossible: '最高可得分',
+    bestScore: '我的最高分', noMiss: '零失误！', tapToSkip: '点击跳过',
+    bpm: 'BPM', difficulty: '难度', easy: '简单', normal: '普通', hard: '困难',
+    metronome: '节拍器声音', volume: '音效音量', calibration: '延迟校准',
+    calibrationGuide: '请跟着节拍点击 8 次', vibration: '振动', language: '语言', theme: '主题',
+    themeSystem: '跟随系统', themeLight: '浅色', themeDark: '深色',
+    noAudio: '此浏览器不支持声音', iosMute: '没有声音？请关闭静音模式',
+    shareText: '我在节奏大师挑战得了 {score} 分！用同样的节奏来超越我吧 🥁',
+    padLabel: '鼓垫 {n}', pause: '暂停', close: '关闭', gotIt: '知道了！',
+    offset: '延迟补偿', offsetHint: '正值：稍晚的点击也算准拍（适合蓝牙耳机）',
+    calibStart: '自动校准', calibListen: '先听前 4 拍…', calibTap: '现在点击！({n}/8)',
+    calibDone: '校准完成：{ms}ms', calibFail: '点击次数不足，再试一次？', cancel: '取消',
+    challengeBanner: '好友的挑战！', challengeInfo: '#{seed} · BPM {bpm} · {level}', clearChallenge: '换新节奏',
+    wrongHitCount: '误击 {n} 次', avgTiming: '平均 {ms}ms', distribution: '判定分布',
+    challengeCode: '同节奏挑战码 #{seed}', serverStats: '🌏 该节奏已挑战 {plays} 次 · 前 {pct}%',
+    imageSaved: '图片已保存！', copyFail: '无法复制链接', timing: '节奏倾向',
+    gameplay: '游戏', sound: '声音', display: '显示', maxComboN: '最大完美连击 {n}',
+  },
+  ja: {
+    title: 'リズムマスターチャレンジ', tagline: 'ドキッとしたパッドをリズムに合わせてタップ！',
+    start: 'スタート', howTo: '遊び方', settings: '設定',
+    pcHint: 'PC：テンキー 7・9・1・3 でプレイ', altKeyHint: 'テンキーがない場合は Q・W・A・S',
+    how1: 'パッドがドキッとしたらタップ！', how2: '真ん中のリングが拍を教えてくれるよ (1-2-3-4)',
+    how3: 'PCはテンキー 7 9 1 3 — 配置そのまま！', how4: '真ん中の丸をタップで一時停止',
+    countIn: '準備…', newPad: 'NEW!', next: 'NEXT', allPerfect: 'ALL PERFECT!',
+    paused: '一時停止', resume: '再開', retry: 'もう一度', home: 'タイトルへ',
+    saveShare: '画像を保存/シェア', challengeLink: '同じリズムで挑戦', linkCopied: 'リンクをコピーしました！',
+    newRecord: '新記録！', accuracy: '正確さ', maxCombo: '最大パーフェクトコンボ',
+    tendencyLate: 'ちょっと遅め 🐢', tendencyEarly: 'ちょっと早め 🐇', tendencyOn: 'ジャスト職人 🎯',
+    scoreHit: 'ジャスト得点', scoreRound: 'ラウンドボーナス', scoreCombo: 'パーフェクトコンボボーナス', scoreSpecial: 'スペシャルボーナス',
+    scorePenalty: 'ミスタップ減点', scoreMultiplier: '倍率', totalScore: '合計スコア', maxPossible: '最大スコア',
+    bestScore: '自己ベスト', noMiss: 'ノーミス！', tapToSkip: 'タップでスキップ',
+    bpm: 'BPM', difficulty: '難易度', easy: 'かんたん', normal: 'ふつう', hard: 'むずかしい',
+    metronome: 'メトロノーム音', volume: '効果音の音量', calibration: 'タイミング調整',
+    calibrationGuide: '音に合わせて8回タップしてね', vibration: '振動', language: '言語', theme: 'テーマ',
+    themeSystem: 'システム', themeLight: 'ライト', themeDark: 'ダーク',
+    noAudio: 'このブラウザは音声に対応していません', iosMute: '音が出ない場合はマナーモードを解除してね',
+    shareText: 'リズムマスターチャレンジで{score}点！同じリズムで超えてみて 🥁',
+    padLabel: 'パッド {n}', pause: '一時停止', close: '閉じる', gotIt: 'わかった！',
+    offset: 'タイミング補正値', offsetHint: '＋にすると遅めのタップもジャスト判定に（Bluetoothイヤホン向け）',
+    calibStart: '自動調整スタート', calibListen: '最初の4拍は聞くだけ…', calibTap: 'タップ！({n}/8)',
+    calibDone: '調整完了：{ms}ms', calibFail: 'タップが足りません。もう一度？', cancel: 'キャンセル',
+    challengeBanner: '友だちからの挑戦状！', challengeInfo: '#{seed} · BPM {bpm} · {level}', clearChallenge: '新しいリズムで',
+    wrongHitCount: 'ミスタップ {n}回', avgTiming: '平均 {ms}ms', distribution: '判定内訳',
+    challengeCode: '同じリズム挑戦コード #{seed}', serverStats: '🌏 このリズムの挑戦 {plays}回 · 上位 {pct}%',
+    imageSaved: '画像を保存しました！', copyFail: 'リンクをコピーできませんでした', timing: 'タイミング傾向',
+    gameplay: 'ゲーム', sound: 'サウンド', display: '表示', maxComboN: '最大パーフェクトコンボ {n}',
+  },
+};
+const LANGS = [['ko', '한국어'], ['en', 'English'], ['zh', '简体中文'], ['ja', '日本語']];
+const I18n = {
+  lang: 'ko', urlLang: null, _nf: null,
+  detect() {
+    const url = new URLSearchParams(location.search).get('lang');
+    if (url && I18N[url]) { this.urlLang = url; return url; }
+    if (Settings.data.lang && I18N[Settings.data.lang]) return Settings.data.lang;
+    for (const l of (navigator.languages || [navigator.language || ''])) {
+      const s = String(l).toLowerCase();
+      if (s.startsWith('ko')) return 'ko';
+      if (s.startsWith('ja')) return 'ja';
+      if (s.startsWith('zh')) return 'zh';
+      if (s.startsWith('en')) return 'en';
+    }
+    return 'en';
+  },
+  t(key, params) {
+    let s = I18N[this.lang][key];
+    if (s == null) {
+      s = I18N.ko[key] != null ? I18N.ko[key] : I18N.en[key];
+      console.warn('[i18n] missing key', this.lang, key);
+      if (s == null) s = key;
+    }
+    if (params) s = s.replace(/\{(\w+)\}/g, (m, k) => (params[k] != null ? params[k] : m));
+    return s;
+  },
+  fmt(n) {
+    if (!this._nf) this._nf = new Intl.NumberFormat(this.lang === 'zh' ? 'zh-CN' : this.lang);
+    return this._nf.format(Math.round(n));
+  },
+  set(lang, persist) {
+    if (!I18N[lang]) lang = 'ko';
+    this.lang = lang; this._nf = null;
+    document.documentElement.lang = lang;
+    if (persist) Settings.set('lang', lang);
+    this.loadFont(lang);
+    this.apply();
+  },
+  loadFont(lang) {
+    // 한국어·영어는 Pretendard, 일본어는 Pretendard JP, 중국어는 Noto Sans SC 를 필요할 때만 로드
+    const id = 'font-' + lang;
+    if (document.getElementById(id)) return;
+    let href = null;
+    if (lang === 'ja') href = 'static/fonts/pretendard-jp/pretendardvariable-jp-dynamic-subset.css';
+    if (lang === 'zh') href = 'https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&display=swap';
+    if (!href) return;
+    const l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = href;
+    document.head.appendChild(l);
+  },
+  apply(root = document) {
+    $$('[data-i18n]', root).forEach(el => { el.textContent = this.t(el.dataset.i18n); });
+    $$('[data-i18n-aria]', root).forEach(el => { el.setAttribute('aria-label', this.t(el.dataset.i18nAria)); });
+    document.title = this.t('title');
+    $$('.lang-select').forEach(sel => { sel.value = this.lang; });
+    $$('.pad').forEach(p => p.setAttribute('aria-label', this.t('padLabel', { n: p.dataset.pad })));
+    App.onLanguageChanged && App.onLanguageChanged();
+  },
+};
+const t = (k, p) => I18n.t(k, p);
+
+/* =========================================================================
+   11. Theme — data-theme 전환 (시스템 / 라이트 / 다크)
+   ========================================================================= */
+const Theme = {
+  mq: window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null,
+  pref: 'system',
+  init(pref) {
+    this.pref = pref;
+    const onChange = () => { if (this.pref === 'system') this.apply(); };
+    if (this.mq) { if (this.mq.addEventListener) this.mq.addEventListener('change', onChange); else if (this.mq.addListener) this.mq.addListener(onChange); }
+    this.apply();
+  },
+  resolved() { return this.pref === 'system' ? (this.mq && this.mq.matches ? 'dark' : 'light') : this.pref; },
+  set(pref) { this.pref = pref; Settings.set('theme', pref); this.apply(); },
+  toggle() { this.set(this.resolved() === 'dark' ? 'light' : 'dark'); },
+  apply() {
+    const r = this.resolved();
+    document.documentElement.setAttribute('data-theme', r);
+    const meta = $('meta[name="theme-color"]'); if (meta) meta.content = r === 'dark' ? '#1E1B2E' : '#FFF8F0';
+    $$('.theme-toggle').forEach(b => { b.textContent = r === 'dark' ? '🌙' : '☀️'; });
+    $$('#set-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === this.pref)));
+  },
+  color(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); },
+};
+
+/* =========================================================================
+   6. Judge / ScoreKeeper — 판정·점수 ①~⑥·퍼펙트 콤보·라운드 등급·최대 점수
+   이벤트 소싱: 기록된 이벤트를 재생해 상태를 만들므로 라운드 롤백이 간단하다.
+   ========================================================================= */
+class ScoreKeeper {
+  constructor(level, bpm) {
+    const S = CONFIG.SCORING;
+    this.levelMul = S.levelMul[level];
+    this.bpmMul = Math.round(clamp(bpm / S.bpmMul.base, S.bpmMul.min, S.bpmMul.max) * 10000) / 10000;
+    this.mul = Math.round(this.levelMul * this.bpmMul * 10000) / 10000;
+    this.events = [];
+    this.reset();
+  }
+  reset() {
+    this.hit = 0; this.round = 0; this.combo = 0; this.special = 0; this.penalty = 0;
+    this.perfectCombo = 0; this.maxPerfectCombo = 0;
+    this.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
+    this.wrongHits = 0;
+    this.roundWrong = new Array(CONFIG.TOTAL_ROUNDS).fill(0);
+    this.roundGrades = new Array(CONFIG.TOTAL_ROUNDS).fill(null);
+    this.roundBonuses = new Array(CONFIG.TOTAL_ROUNDS).fill(0);
+    this.roundAcc = Array.from({ length: CONFIG.TOTAL_ROUNDS }, () => ({ pts: 0, n: 0 }));
+    this.milestones = {};
+    this.specials = [];
+    this.deltas = [];
+    this.fullPerfect = false; this.noMiss = false;
+  }
+  static comboBonus(n) {
+    for (const tier of CONFIG.SCORING.perfectCombo) {
+      if (n >= tier.min && n <= tier.max) return tier.step ? tier.step * (n - 1) : tier.perHit;
+    }
+    return 0;
+  }
+  record(ev) { this.events.push(ev); return this.apply(ev); }
+  apply(ev) {
+    const S = CONFIG.SCORING;
+    const fx = { points: 0, comboBonus: 0, milestone: 0, callout: 0 };
+    if (ev.type === 'hit') {
+      const r = ev.result;
+      this.counts[r]++;
+      this.hit += S.hit[r]; fx.points = S.hit[r];
+      const ra = this.roundAcc[ev.round]; ra.n++; ra.pts += { perfect: 100, great: 70, good: 40, miss: 0 }[r];
+      if (r !== 'miss' && ev.deltaMs != null) this.deltas.push(ev.deltaMs);
+      if (r === 'perfect') {
+        this.perfectCombo++;
+        this.maxPerfectCombo = Math.max(this.maxPerfectCombo, this.perfectCombo);
+        const b = ScoreKeeper.comboBonus(this.perfectCombo);
+        this.combo += b; fx.comboBonus = b;
+        const m = S.milestone[this.perfectCombo];
+        if (m && !this.milestones[this.perfectCombo]) {
+          this.milestones[this.perfectCombo] = true;
+          this.special += m; fx.milestone = m;
+          this.specials.push({ label: this.perfectCombo + ' PERFECT COMBO', value: m });
+        }
+        if (CONFIG.COMBO_CALLOUTS.includes(this.perfectCombo)) fx.callout = this.perfectCombo;
+      } else {
+        this.perfectCombo = 0;
+        this.roundWrong[ev.round]++;
+      }
+    } else if (ev.type === 'wrong') {
+      this.wrongHits++;
+      this.penalty += -S.wrongHit; fx.points = S.wrongHit;
+      this.perfectCombo = 0;
+      if (ev.round >= 0 && ev.round < CONFIG.TOTAL_ROUNDS) this.roundWrong[ev.round]++;
+    } else if (ev.type === 'roundEnd') {
+      const w = this.roundWrong[ev.round];
+      const base = S.roundBonus[w] != null ? S.roundBonus[w] : S.roundBonus.else;
+      const bonus = Math.round(base * S.roundWeight[ev.round]);
+      this.round += bonus; this.roundBonuses[ev.round] = bonus;
+      const grade = w === 0 ? 'PERFECT' : w === 1 ? 'GREAT' : w === 2 ? 'GOOD' : 'BREAK';
+      this.roundGrades[ev.round] = grade;
+      fx.grade = grade; fx.bonus = bonus;
+    } else if (ev.type === 'final') {
+      if (ev.totalNotes > 0 && this.counts.perfect === ev.totalNotes && this.wrongHits === 0) {
+        this.fullPerfect = true; this.special += S.fullPerfect;
+        this.specials.push({ label: 'FULL PERFECT', value: S.fullPerfect });
+      } else if (this.counts.miss === 0 && this.wrongHits === 0) {
+        this.noMiss = true; this.special += S.noMiss;
+        this.specials.push({ label: 'NO MISS', value: S.noMiss, i18n: 'noMiss' });
+      }
+    }
+    return fx;
+  }
+  rollbackTo(round) {
+    const keep = this.events.filter(e => e.type !== 'final' && e.round < round);
+    this.events = [];
+    this.reset();
+    keep.forEach(e => this.record(e));
+  }
+  get raw() { return this.hit + this.round + this.combo + this.special - this.penalty; }
+  total() { return Math.floor(Math.max(0, this.raw) * this.mul + 1e-6); }
+  accuracy(totalNotes) {
+    if (!totalNotes) return 0;
+    const c = this.counts;
+    return (c.perfect * 100 + c.great * 70 + c.good * 40) / (totalNotes * 100) * 100;
+  }
+  avgDelta() { return this.deltas.length ? this.deltas.reduce((a, b) => a + b, 0) / this.deltas.length : null; }
+  /** 같은 패턴을 "전부 PERFECT + 헛치기 0" 으로 시뮬레이션한 이론상 최대 점수 */
+  static simulateMax(rounds, level, bpm) {
+    const k = new ScoreKeeper(level, bpm);
+    let total = 0;
+    rounds.forEach(r => {
+      r.notes.forEach(() => k.record({ type: 'hit', round: r.index, result: 'perfect', deltaMs: 0 }));
+      total += r.notes.length;
+      k.record({ type: 'roundEnd', round: r.index });
+    });
+    k.record({ type: 'final', totalNotes: total });
+    return k.total();
+  }
+}
+
+/* =========================================================================
+   App-level Game (타임라인·스케줄러·판정 연결)
+   ========================================================================= */
+class Game {
+  constructor({ seed, bpm, level }) {
+    this.seed = seed; this.bpm = bpm; this.level = level;
+    this.beatDur = 60 / bpm;
+    this.span = CONFIG.BEATS_PER_ROUND * (1 + CONFIG.GAP_BARS_BETWEEN_ROUNDS);
+    this.rounds = PatternGenerator.generate(seed, level);
+    this.notes = [];
+    let id = 0;
+    this.rounds.forEach(r => r.notes.forEach(n => {
+      this.notes.push({ id: id++, round: r.index, beatPos: n.beatPos, padId: n.padId, eighth: n.eighth, chord: n.chord,
+        time: 0, judged: false, result: null, deltaMs: null });
+    }));
+    this.roundNotes = this.rounds.map(r => this.notes.filter(n => n.round === r.index));
+    this.padNotes = {};
+    CONFIG.PAD_IDS.forEach(p => { this.padNotes[p] = this.notes.filter(n => n.padId === p); });
+    this.score = new ScoreKeeper(level, bpm);
+    this.maxPossible = ScoreKeeper.simulateMax(this.rounds, level, bpm);
+    this.state = 'idle';
+    this.version = 0;          // 판정이 바뀔 때마다 증가 → 도트 다시 그리기
+    this.finished = false;
+    this.schedTimer = null;
+  }
+  get offset() { return Settings.data.offsetMs / 1000; }
+  roundStart(r) { return this.origin + (CONFIG.COUNT_IN_BEATS + (r - this.firstRound) * this.span) * this.beatDur; }
+  roundEnd(r) { return this.roundStart(r) + CONFIG.BEATS_PER_ROUND * this.beatDur; }
+  totalBeats() { return CONFIG.COUNT_IN_BEATS + (CONFIG.TOTAL_ROUNDS - this.firstRound) * this.span - CONFIG.GAP_BARS_BETWEEN_ROUNDS * CONFIG.BEATS_PER_ROUND; }
+
+  begin(fromRound) {
+    this.firstRound = fromRound;
+    this.nextFinalize = fromRound;
+    this.origin = AudioEngine.now() + CONFIG.START_DELAY_S;
+    this.notes.forEach(n => {
+      if (n.round >= fromRound) {
+        n.time = this.roundStart(n.round) + n.beatPos * this.beatDur;
+        n.judged = false; n.result = null; n.deltaMs = null;
+      }
+    });
+    this.nextBeat = 0;
+    this.state = 'countIn';
+    this.finished = false;
+    this.version++;
+    this.startScheduler();
+  }
+
+  /** 시각 t(초)에서의 위치 */
+  position(t) {
+    const CI = CONFIG.COUNT_IN_BEATS;
+    const b = (t - this.origin) / this.beatDur;
+    if (b < CI) return { phase: 'countIn', round: this.firstRound, beat: Math.max(0, b), abs: b };
+    const rb = b - CI;
+    const ri = Math.floor(rb / this.span);
+    const inR = rb - ri * this.span;
+    const round = this.firstRound + ri;
+    if (round >= CONFIG.TOTAL_ROUNDS) return { phase: 'end', round: CONFIG.TOTAL_ROUNDS - 1, beat: 3.999, abs: b };
+    if (inR >= CONFIG.BEATS_PER_ROUND) return { phase: 'gap', round, beat: (inR - CONFIG.BEATS_PER_ROUND) % 4, abs: b };
+    return { phase: 'round', round, beat: inR, abs: b };
+  }
+
+  /* ---------- 메트로놈 lookahead 스케줄러 ---------- */
+  startScheduler() {
+    this.stopScheduler();
+    if (!AudioEngine.useCtx) return;
+    this.schedTimer = setInterval(() => this.schedule(), CONFIG.SCHED_INTERVAL_MS);
+    this.schedule();
+  }
+  stopScheduler() { if (this.schedTimer) { clearInterval(this.schedTimer); this.schedTimer = null; } }
+  schedule() {
+    const ctx = AudioEngine.ctx;
+    if (!ctx || !AudioEngine.useCtx) return;
+    const horizon = ctx.currentTime + CONFIG.SCHED_LOOKAHEAD_S;
+    const total = this.totalBeats();
+    const CI = CONFIG.COUNT_IN_BEATS;
+    while (this.nextBeat < total) {
+      const bt = this.origin + this.nextBeat * this.beatDur;
+      if (bt > horizon) break;
+      if (bt >= ctx.currentTime - 0.02) {
+        const isCI = this.nextBeat < CI;
+        const rb = this.nextBeat - CI;
+        const inBar = isCI ? this.nextBeat : (rb % this.span) % 4;
+        if (isCI || Settings.data.metronome) AudioEngine.tick(bt, inBar === 0, isCI);
+        if (!isCI && rb % this.span === 0) {
+          const r = this.firstRound + rb / this.span;
+          if (this.rounds[r] && this.rounds[r].newPads.length) AudioEngine.pop(bt);
+        }
+      }
+      this.nextBeat++;
+    }
+  }
+
+  /* ---------- 판정 ---------- */
+  onPad(padId, perfMs) {
+    if (this.state !== 'countIn' && this.state !== 'playing') return null;
+    const tIn = AudioEngine.audible(perfMs) - this.offset;
+    let best = null, bestD = 0;
+    for (const n of this.padNotes[padId]) {
+      if (n.judged || n.round < this.firstRound) continue;
+      const d = tIn - n.time;
+      if (Math.abs(d) <= W.good && (!best || Math.abs(d) < Math.abs(bestD))) { best = n; bestD = d; }
+    }
+    if (best) {
+      const ad = Math.abs(bestD);
+      const result = ad <= W.perfect ? 'perfect' : ad <= W.great ? 'great' : 'good';
+      this.judge(best, result, Math.round(bestD * 1000));
+      return result;
+    }
+    // 헛치기: 판정 윈도우 안에 이 패드의 노트가 없음 (비활성 패드·카운트인 제외)
+    const pos = this.position(tIn);
+    if (pos.phase !== 'round') return null;
+    let r = pos.round;
+    if (r < this.nextFinalize) r = this.nextFinalize;   // 이미 정산된 라운드면 다음 라운드로
+    if (r >= CONFIG.TOTAL_ROUNDS || !this.rounds[r].pads.includes(padId)) return null;
+    this.score.record({ type: 'wrong', round: r });
+    Renderer.onWrong(padId, CONFIG.SCORING.wrongHit);
+    return 'wrong';
+  }
+  judge(n, result, deltaMs) {
+    n.judged = true; n.result = result; n.deltaMs = deltaMs;
+    this.version++;
+    const fx = this.score.record({ type: 'hit', round: n.round, result, deltaMs });
+    Renderer.onJudge(n, result, fx);
+  }
+
+  /** 매 프레임: 자동 MISS, 라운드 정산, 종료 판단 */
+  update(now) {
+    if (this.state !== 'countIn' && this.state !== 'playing') return;
+    const tv = now - this.offset;
+    const pos = this.position(tv);
+    if (this.state === 'countIn' && pos.phase !== 'countIn') this.state = 'playing';
+    for (const n of this.notes) {
+      if (!n.judged && n.round >= this.firstRound && tv - n.time > W.good) this.judge(n, 'miss', null);
+    }
+    while (this.nextFinalize < CONFIG.TOTAL_ROUNDS) {
+      const r = this.nextFinalize;
+      if (tv >= this.roundEnd(r) && this.roundNotes[r].every(n => n.judged)) {
+        const fx = this.score.record({ type: 'roundEnd', round: r });
+        this.nextFinalize++;
+        Renderer.onRoundEnd(r, fx);
+      } else break;
+    }
+    if (this.nextFinalize >= CONFIG.TOTAL_ROUNDS && !this.finished) this.finish();
+  }
+  finish() {
+    this.finished = true;
+    this.state = 'ending';
+    this.stopScheduler();
+    this.score.record({ type: 'final', totalNotes: this.notes.length });
+    Renderer.onFinish(this.score);
+    const delay = this.score.fullPerfect || this.score.noMiss ? 1700 : 900;
+    this.endAt = performance.now() + delay;
+  }
+
+  pause() {
+    if (this.state !== 'countIn' && this.state !== 'playing') return false;
+    this.update(AudioEngine.audible());
+    if (this.finished) return false;
+    this.state = 'paused';
+    this.stopScheduler();
+    this.pausedRound = Math.min(this.nextFinalize, CONFIG.TOTAL_ROUNDS - 1);
+    return true;
+  }
+  /** 재개: 카운트인 1마디 후 현재 라운드 처음부터 (해당 라운드 점수 롤백) */
+  resume() {
+    const r = this.pausedRound;
+    this.score.rollbackTo(r);
+    this.begin(r);
+  }
+  stop() { this.stopScheduler(); this.state = 'stopped'; }
+
+  buildResult() {
+    const s = this.score;
+    const total = s.total();
+    return {
+      total, maxPossible: this.maxPossible,
+      breakdown: { hit: s.hit, round: s.round, combo: s.combo, special: s.special, penalty: s.penalty,
+        multiplier: s.mul, levelMul: s.levelMul, bpmMul: s.bpmMul },
+      specials: s.specials.slice(),
+      roundGrades: s.roundGrades.map(g => g || 'BREAK'),
+      accuracy: s.accuracy(this.notes.length),
+      maxPerfectCombo: s.maxPerfectCombo,
+      counts: Object.assign({}, s.counts), wrongHits: s.wrongHits,
+      avgDeltaMs: s.avgDelta(),
+      roundAccuracy: s.roundAcc.map(a => (a.n ? a.pts / a.n : 0)),
+      totalNotes: this.notes.length,
+      fullPerfect: s.fullPerfect, noMiss: s.noMiss,
+      bpm: this.bpm, level: this.level, seed: this.seed, playedAt: Date.now(),
+    };
+  }
+}
+
+/* =========================================================================
+   7. Renderer — rAF 루프, 허브(박자 링), 패드 애니메이션
+   ========================================================================= */
+const Renderer = {
+  pads: {},
+  build() {
+    const wrap = $('#pads');
+    wrap.innerHTML = '';
+    CONFIG.PAD_IDS.forEach(id => {
+      const el = document.createElement('div');
+      el.className = 'pad';
+      el.dataset.pad = id;
+      el.setAttribute('role', 'button');
+      el.innerHTML =
+        '<div class="pad-body"><div class="pad-glow"></div><div class="pad-ring"></div>' +
+        '<div class="pad-face"><span class="pad-key">' + id + '</span><span class="pad-new en">NEW!</span>' +
+        '<span class="pad-icon" aria-hidden="true">♩</span>' +
+        '<div class="pad-beats"><div class="pad-dots cur"></div><div class="pad-next"><span class="next-label">NEXT</span><div class="pad-dots nx"></div></div></div>' +
+        '<div class="pad-flash"></div></div></div>';
+      wrap.appendChild(el);
+      this.pads[id] = {
+        el, body: $('.pad-body', el), glow: $('.pad-glow', el), ring: $('.pad-ring', el), face: $('.pad-face', el),
+        icon: $('.pad-icon', el), dots: $('.pad-dots.cur', el), nextDots: $('.pad-dots.nx', el), flash: $('.pad-flash', el),
+        cache: {}, pressTimer: 0, pressedAt: 0,
+      };
+    });
+    // 허브 SVG: 4박 세그먼트 + 라운드 진행 링 + 재생헤드
+    const svg = $('#hub-svg');
+    const R = 44, arc = (a0, a1, r) => {
+      const p = a => [50 + r * Math.cos(a * Math.PI / 180), 50 + r * Math.sin(a * Math.PI / 180)];
+      const [x0, y0] = p(a0), [x1, y1] = p(a1);
+      return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+    };
+    let html = '<circle class="prog-bg" cx="50" cy="50" r="36"/><circle class="prog" id="hub-prog" cx="50" cy="50" r="36" transform="rotate(-90 50 50)" stroke-dasharray="0 1000"/>';
+    for (let i = 0; i < 4; i++) html += `<path class="seg${i === 0 ? ' strong' : ''}" d="${arc(-90 + i * 90 + 7, -90 + (i + 1) * 90 - 7, R)}"/>`;
+    html += `<g id="hub-head"><circle class="head" cx="50" cy="${50 - R}" r="4.2"/></g>`;
+    svg.innerHTML = html;
+    this.hubSegs = $$('.seg', svg);
+    this.hubHead = $('#hub-head');
+    this.hubProg = $('#hub-prog');
+    this.progLen = 2 * Math.PI * 36;
+    this.hubScore = $('#hub-score'); this.hubRound = $('#hub-round'); this.hubCount = $('#hub-count');
+    this.float = $('#float-layer'); this.comboChip = $('#combo-chip');
+  },
+  reset(game) {
+    this.game = game;
+    this.renderKey = '';
+    this.lastBeatIdx = -1; this.lastCount = null; this.lastRoundShown = null;
+    this.displayScore = game.score.total(); this.scoreFrom = this.displayScore; this.scoreTo = this.displayScore; this.scoreStart = 0;
+    this.hubScore.textContent = I18n.fmt(this.displayScore);
+    this.comboChip.hidden = true; this.lastCombo = 0; this.popSlots = [];
+    $$('.banner, .score-pop, .sparkles', this.float).forEach(e => e.remove());
+    Object.values(this.pads).forEach(p => { p.cache = {}; p.el.classList.remove('is-new', 'pressed', 'show-next'); });
+  },
+  setPressed(id, on) {
+    const p = this.pads[id]; if (!p) return;
+    clearTimeout(p.pressTimer);
+    if (on) { p.pressedAt = performance.now(); p.el.classList.add('pressed'); }
+    else {
+      const left = 60 - (performance.now() - p.pressedAt);   // 눌림 연출 최소 60ms
+      if (left > 0) p.pressTimer = setTimeout(() => p.el.classList.remove('pressed'), left);
+      else p.el.classList.remove('pressed');
+    }
+  },
+  retrigger(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); },
+  judgePop(padId, text, cls) {
+    const p = this.pads[padId];
+    const d = document.createElement('div');
+    d.className = 'judge-pop ' + cls; d.textContent = text;
+    d.addEventListener('animationend', () => d.remove());
+    p.body.appendChild(d);
+  },
+  onJudge(n, result, fx) {
+    const p = this.pads[n.padId];
+    this.judgePop(n.padId, result.toUpperCase(), result);
+    p.flash.style.setProperty('--flash', Theme.color('--' + result));
+    this.retrigger(p.flash, 'go');
+    if (result === 'miss' && !reducedMotion()) this.retrigger(p.face, 'shake');
+    const bonus = (fx.comboBonus || 0) + (fx.milestone || 0);
+    if (bonus > 0) this.scorePop('+' + I18n.fmt(bonus * this.game.score.mul));
+    if (fx.callout) { this.banner(fx.callout + ' PERFECT COMBO!', 'callout perfect', 900); AudioEngine.milestone(); }
+    this.updateScoreTarget();
+  },
+  onWrong(padId, pts) {
+    this.judgePop(padId, I18n.fmt(pts * this.game.score.mul), 'wrong');
+    this.updateScoreTarget();
+  },
+  onRoundEnd(r, fx) {
+    const map = { PERFECT: ['PERFECT ROUND!', 'perfect'], GREAT: ['GREAT ROUND', 'great'], GOOD: ['GOOD ROUND', 'good'], BREAK: ['BREAK', 'break'] };
+    const [txt, cls] = map[fx.grade];
+    this.banner(txt, 'round ' + cls, 600);
+    if (fx.grade === 'PERFECT') { AudioEngine.arpeggio(); this.sparkles(14); }
+    else if (fx.grade === 'BREAK') AudioEngine.buu();
+    if (fx.bonus > 0) this.scorePop('+' + I18n.fmt(fx.bonus * this.game.score.mul));
+    this.updateScoreTarget();
+  },
+  onFinish(score) {
+    if (score.fullPerfect) { this.banner('FULL PERFECT!', 'big perfect', 1600); this.sparkles(36); AudioEngine.fanfare(); }
+    else if (score.noMiss) { this.banner(t('noMiss'), 'big great', 1500); this.sparkles(18); AudioEngine.arpeggio(); }
+    this.updateScoreTarget();
+  },
+  banner(text, cls, ms) {
+    const b = document.createElement('div');
+    b.className = 'banner ' + cls; b.textContent = text;
+    b.style.animationDuration = ms + 'ms';
+    b.addEventListener('animationend', () => b.remove());
+    this.float.appendChild(b);
+  },
+  scorePop(text) {
+    const d = document.createElement('div');
+    d.className = 'score-pop' + (text.startsWith('-') || text.startsWith('−') ? ' minus' : '');
+    d.textContent = text;
+    // 동시에 뜨는 팝업은 아래로 쌓아서 겹치지 않게
+    const slot = this.popSlots.indexOf(false) >= 0 ? this.popSlots.indexOf(false) : this.popSlots.length;
+    this.popSlots[slot] = true;
+    d.style.marginTop = slot * 24 + 'px';
+    d.addEventListener('animationend', () => { this.popSlots[slot] = false; d.remove(); });
+    this.float.appendChild(d);
+  },
+  sparkles(n) {
+    if (reducedMotion()) return;
+    const box = document.createElement('div'); box.className = 'sparkles';
+    const colors = ['--pad-7', '--pad-9', '--pad-1', '--pad-3', '--perfect'].map(c => Theme.color(c));
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement('i');
+      const a = Math.random() * Math.PI * 2, d = 80 + Math.random() * 180;
+      s.style.setProperty('--x', Math.cos(a) * d + 'px'); s.style.setProperty('--y', Math.sin(a) * d + 'px');
+      s.style.background = colors[i % colors.length];
+      s.style.animationDelay = Math.random() * 0.12 + 's';
+      box.appendChild(s);
+    }
+    this.float.appendChild(box);
+    setTimeout(() => box.remove(), 1400);
+  },
+  updateScoreTarget() {
+    const target = this.game.score.total();
+    if (target === this.scoreTo) return;
+    this.scoreFrom = this.displayScore; this.scoreTo = target; this.scoreStart = performance.now();
+    if (target > this.scoreFrom) this.retrigger(this.hubScore, 'bump');
+  },
+
+  dotsHTML(round, padId) {
+    const g = this.game;
+    const notes = g.roundNotes[round.index].filter(n => n.padId === padId);
+    const step = 4 / round.subdiv;
+    let h = '';
+    for (let s = 0; s < round.subdiv; s++) {
+      const bp = s * step;
+      const n = notes.find(x => Math.abs(x.beatPos - bp) < 1e-6);
+      let cls = 'dot' + (round.subdiv === 8 && s % 2 ? ' half' : '');
+      if (n) cls += n.judged ? ' j-' + n.result : ' on';
+      h += `<i class="${cls}" data-s="${s}"></i>`;
+    }
+    return h;
+  },
+
+  frame(now) {
+    const g = this.game;
+    if (!g) return;
+    const tv = now - g.offset;
+    const pos = g.position(tv);
+    const inPlay = pos.phase === 'round' || pos.phase === 'gap';
+    const dispRound = pos.phase === 'countIn' ? null : pos.round;
+    const activeRound = g.rounds[dispRound == null ? g.firstRound : dispRound];
+    let nextIdx = null;
+    if (pos.phase === 'countIn') nextIdx = g.firstRound;
+    else if ((pos.phase === 'round' && pos.beat >= 3) || pos.phase === 'gap') nextIdx = pos.round + 1 < CONFIG.TOTAL_ROUNDS ? pos.round + 1 : null;
+    const beatIdx = Math.floor(pos.beat);
+
+    // --- 라운드 전환: NEW! 뱃지
+    if (dispRound != null && dispRound !== this.lastRoundShown) {
+      this.lastRoundShown = dispRound;
+      const r = g.rounds[dispRound];
+      r.newPads.forEach(id => {
+        const p = this.pads[id];
+        p.el.classList.remove('is-new'); void p.el.offsetWidth; p.el.classList.add('is-new');
+        setTimeout(() => p.el.classList.remove('is-new'), 1600);
+      });
+    }
+
+    // --- 도트/아이콘 (판정·라운드·미리보기 변화 시에만 다시 그림)
+    const key = `${dispRound}|${nextIdx}|${g.version}|${inPlay ? beatIdx : -1}`;
+    if (key !== this.renderKey) {
+      this.renderKey = key;
+      CONFIG.PAD_IDS.forEach(id => {
+        const p = this.pads[id];
+        const active = activeRound.pads.includes(id);
+        p.el.classList.toggle('inactive', !active && !(nextIdx != null && g.rounds[nextIdx].pads.includes(id) && pos.phase === 'countIn'));
+        if (dispRound != null && active) {
+          p.dots.innerHTML = this.dotsHTML(activeRound, id);
+          if (pos.phase === 'round') {
+            const sub = activeRound.subdiv, per = sub / 4;
+            $$('.dot', p.dots).forEach((d, s) => { if (Math.floor(s / per) === beatIdx) d.classList.add('now'); });
+          }
+        } else p.dots.innerHTML = '';
+        const showNext = nextIdx != null && g.rounds[nextIdx].pads.includes(id);
+        p.el.classList.toggle('show-next', showNext);
+        if (showNext) p.nextDots.innerHTML = this.dotsHTML(g.rounds[nextIdx], id);
+        // 아이콘: 다가오는 노트가 8분음표면 ♪, 아니면 ♩
+        const upcoming = g.padNotes[id].find(n => !n.judged && n.round >= g.firstRound);
+        const inRoundLeft = g.roundNotes[activeRound.index].some(n => n.padId === id && !n.judged);
+        p.icon.textContent = upcoming && upcoming.eighth ? '♪' : '♩';
+        p.icon.classList.toggle('done', dispRound != null && active && !inRoundLeft && !showNext);
+      });
+    }
+
+    // --- 접근 링 & 두근 (오디오 시계 기준, 매 프레임 계산)
+    const rm = reducedMotion();
+    const amp = rm ? 0.05 : 0.10;
+    CONFIG.PAD_IDS.forEach(id => {
+      const p = this.pads[id];
+      let upcoming = null, last = null;
+      for (const n of g.padNotes[id]) {
+        if (n.round < g.firstRound) continue;
+        if (n.time > tv) { if (!upcoming || n.time < upcoming.time) upcoming = n; }
+        else if (!last || n.time > last.time) last = n;
+      }
+      // 두근
+      let s = 1, glow = 0, iconS = 1;
+      if (last) {
+        const e = tv - last.time;
+        if (e < CONFIG.PULSE_S) {
+          const k = e / CONFIG.PULSE_S;
+          const curve = Math.sin(Math.PI * Math.min(1, k * 1.25)) * (1 - k * 0.3);
+          s = 1 + amp * Math.max(0, curve);
+          glow = Math.max(0, 1 - k);
+          iconS = 1 + amp * 1.6 * Math.max(0, curve);
+        }
+      }
+      // 접근 링: T − 1박 ~ T 동안 바깥에서 테두리로 줄어듦
+      let ringS = 1, ringO = 0;
+      if (upcoming && !upcoming.judged) {
+        const pr = (upcoming.time - tv) / g.beatDur;
+        if (pr <= 1) { ringS = 1 + 0.22 * pr; ringO = 0.25 + 0.75 * (1 - pr); glow = Math.max(glow, (1 - pr) * 0.25); }
+      }
+      const c = p.cache;
+      const bs = s.toFixed(4);
+      if (c.bs !== bs) { c.bs = bs; p.body.style.transform = s === 1 ? '' : `scale(${bs})`; }
+      const is = iconS.toFixed(3);
+      if (c.is !== is) { c.is = is; p.icon.style.transform = iconS === 1 ? '' : `scale(${is}) translateY(${((1 - iconS) * 40).toFixed(1)}%)`; }
+      const go = glow.toFixed(2);
+      if (c.go !== go) { c.go = go; p.glow.style.opacity = go; }
+      const rs = ringS.toFixed(4) + '|' + ringO.toFixed(2);
+      if (c.rs !== rs) { c.rs = rs; p.ring.style.transform = `scale(${ringS.toFixed(4)})`; p.ring.style.opacity = ringO.toFixed(2); }
+    });
+
+    // --- 허브: 박자 세그먼트, 재생헤드(연속 이동), 라운드 진행
+    const barFrac = clamp(pos.beat / 4, 0, 0.9999);
+    this.hubHead.setAttribute('transform', `rotate(${(barFrac * 360).toFixed(2)} 50 50)`);
+    if (beatIdx !== this.lastBeatIdx) {
+      this.lastBeatIdx = beatIdx;
+      this.hubSegs.forEach((sg, i) => sg.classList.toggle('on', i === beatIdx && pos.phase !== 'end'));
+    }
+    const doneRounds = pos.phase === 'countIn' ? g.firstRound : pos.round + (pos.phase === 'end' ? 1 : barFrac);
+    this.hubProg.setAttribute('stroke-dasharray', `${(this.progLen * doneRounds / CONFIG.TOTAL_ROUNDS).toFixed(2)} 1000`);
+    if (pos.phase === 'countIn') {
+      const cnt = String(4 - Math.min(3, beatIdx));
+      if (this.lastCount !== cnt) {
+        this.lastCount = cnt;
+        this.hubCount.hidden = false; this.hubScore.hidden = true;
+        this.hubCount.textContent = cnt;
+        this.hubRound.textContent = t('countIn');
+        this.retrigger(this.hubCount, 'tick');
+      }
+    } else if (this.lastCount !== null) {
+      this.lastCount = null;
+      this.hubCount.hidden = true; this.hubScore.hidden = false;
+    }
+    if (pos.phase !== 'countIn') {
+      const rt = `R${Math.min(pos.round, 7) + 1}/${CONFIG.TOTAL_ROUNDS}`;
+      if (this.hubRound.textContent !== rt) this.hubRound.textContent = rt;
+    }
+
+    // --- 점수 촤르륵 (250ms, easeOutCubic)
+    if (this.displayScore !== this.scoreTo) {
+      const k = clamp((performance.now() - this.scoreStart) / 250, 0, 1);
+      const e = 1 - Math.pow(1 - k, 3);
+      this.displayScore = k >= 1 ? this.scoreTo : Math.round(this.scoreFrom + (this.scoreTo - this.scoreFrom) * e);
+      this.hubScore.textContent = I18n.fmt(this.displayScore);
+    }
+    // --- 퍼펙트 콤보 칩 (2 이상일 때만)
+    const pc = g.score.perfectCombo;
+    if (pc !== this.lastCombo) {
+      this.lastCombo = pc;
+      this.comboChip.hidden = pc < 2;
+      if (pc >= 2) { this.comboChip.textContent = `PERFECT COMBO ×${pc}`; this.retrigger(this.comboChip, 'bump'); }
+    }
+  },
+};
+
+/* =========================================================================
+   5. InputManager — 포인터(멀티터치) / 키보드 → padId
+   ========================================================================= */
+const KEY_TO_PAD = {
+  Numpad7: 7, Numpad9: 9, Numpad1: 1, Numpad3: 3,   // NumLock 상태와 무관하게 code 로 판별
+  KeyQ: 7, KeyW: 9, KeyA: 1, KeyS: 3,
+  KeyU: 7, KeyI: 9, KeyJ: 1, KeyK: 3,
+};
+const InputManager = {
+  pointerPad: new Map(),
+  lastHit: {},
+  handler: null,
+  normTs(ts) {
+    const now = performance.now();
+    return (typeof ts === 'number' && ts > 0 && ts <= now + 5 && now - ts < 500) ? ts : now;
+  },
+  init(handler) {
+    this.handler = handler;
+    const wrap = $('#pads');
+    wrap.addEventListener('pointerdown', e => {
+      const el = e.target.closest('.pad'); if (!el) return;
+      e.preventDefault();
+      const id = +el.dataset.pad;
+      try { el.setPointerCapture(e.pointerId); } catch (_) { /* noop */ }
+      this.pointerPad.set(e.pointerId, id);
+      this.press(id, e.timeStamp, e.pointerType !== 'mouse');
+    });
+    const up = e => {
+      const id = this.pointerPad.get(e.pointerId); if (id == null) return;
+      this.pointerPad.delete(e.pointerId);
+      Renderer.setPressed(id, false);
+    };
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => wrap.addEventListener(ev, up));
+    wrap.addEventListener('contextmenu', e => e.preventDefault());
+  },
+  press(id, ts, touch) {
+    const perf = this.normTs(ts);
+    Renderer.setPressed(id, true);
+    if (this.lastHit[id] != null && perf - this.lastHit[id] < CONFIG.CHATTER_MS) return;  // 채터링 방지
+    this.lastHit[id] = perf;
+    this.handler(id, perf, touch);
+  },
+};
+
+/* =========================================================================
+   8. ResultCard — 결과 공유 이미지 (1080×1350, 캔버스 직접 렌더)
+   ========================================================================= */
+const ResultCard = {
+  fontFamily() {
+    if (I18n.lang === 'ja') return '"Pretendard JP Variable", "Pretendard Variable", system-ui, sans-serif';
+    if (I18n.lang === 'zh') return '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Pretendard Variable", sans-serif';
+    return '"Pretendard Variable", Pretendard, system-ui, sans-serif';
+  },
+  async waitFonts(texts) {
+    if (!document.fonts || !document.fonts.load) return;
+    const sample = texts.join(' ');
+    const fams = ['"Pretendard Variable"'];
+    if (I18n.lang === 'ja') fams.push('"Pretendard JP Variable"');
+    if (I18n.lang === 'zh') fams.push('"Noto Sans SC"');
+    const jobs = [];
+    fams.forEach(f => [500, 700, 900].forEach(w => jobs.push(document.fonts.load(`${w} 40px ${f}`, sample).catch(() => null))));
+    await Promise.race([Promise.all(jobs).then(() => document.fonts.ready), new Promise(r => setTimeout(r, 2500))]);
+  },
+  rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  },
+  fit(ctx, text, weight, size, maxW, fam) {
+    let s = size;
+    do { ctx.font = `${weight} ${s}px ${fam}`; if (ctx.measureText(text).width <= maxW) break; s -= 2; } while (s > 12);
+    return s;
+  },
+  async render(result) {
+    const W = 1080, H = 1350;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    const dark = Theme.resolved() === 'dark';
+    const C = n => Theme.color(n);
+    const fam = this.fontFamily();
+    const numFam = '"Pretendard Variable", Pretendard, system-ui, sans-serif';
+    const lvl = t(result.level);
+    const date = new Intl.DateTimeFormat(I18n.lang === 'zh' ? 'zh-CN' : I18n.lang, { dateStyle: 'medium' }).format(new Date(result.playedAt));
+    const tend = tendencyText(result.avgDeltaMs);
+    const texts = [t('title'), t('totalScore'), t('scoreHit'), t('scoreRound'), t('scoreCombo'), t('scoreSpecial'), t('scorePenalty'),
+      t('accuracy'), t('maxCombo'), t('maxPossible'), tend, lvl, t('challengeCode', { seed: result.seed }), date, '0123456789,%×·#/+-−'];
+    await this.waitFonts(texts);
+
+    // 배경: 라이트 = 파스텔 그라데이션, 다크 = 딥퍼플 + 네온 글로우
+    ctx.fillStyle = C('--bg'); ctx.fillRect(0, 0, W, H);
+    const blobs = [['--pad-7', 120, 140], ['--pad-9', 980, 260], ['--pad-1', 140, 1200], ['--pad-3', 960, 1150]];
+    blobs.forEach(([c, x, y]) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 620);
+      const col = C(c);
+      g.addColorStop(0, hexA(col, dark ? 0.45 : 0.7)); g.addColorStop(1, hexA(col, 0));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    });
+    // 도트 패턴
+    ctx.fillStyle = dark ? 'rgba(255,255,255,.05)' : 'rgba(43,43,58,.05)';
+    for (let y = 30; y < H; y += 40) for (let x = 30 + (y / 40 % 2) * 20; x < W; x += 40) { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); }
+
+    // 카드
+    ctx.save();
+    ctx.shadowColor = dark ? 'rgba(0,0,0,.5)' : 'rgba(60,40,80,.18)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 16;
+    this.rr(ctx, 60, 60, W - 120, H - 120, 56);
+    ctx.fillStyle = dark ? 'rgba(42,38,64,.92)' : 'rgba(255,255,255,.9)'; ctx.fill();
+    ctx.restore();
+
+    const text = C('--text'), sub = C('--text-sub');
+    ctx.textBaseline = 'alphabetic';
+    // 1. 타이틀 + 날짜 (패드 4색 로고)
+    const cols = ['--pad-7', '--pad-9', '--pad-1', '--pad-3'].map(C);
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([i, j], k) => { this.rr(ctx, 120 + i * 38, 118 + j * 38, 32, 32, 9); ctx.fillStyle = cols[k]; ctx.fill(); });
+    ctx.textAlign = 'left'; ctx.fillStyle = text;
+    this.fit(ctx, t('title'), 800, 54, 680, fam);
+    ctx.fillText(t('title'), 218, 168);
+    ctx.font = `600 28px ${fam}`; ctx.fillStyle = sub; ctx.fillText(date, 220, 204);
+
+    // 2. 총점
+    ctx.textAlign = 'center';
+    ctx.font = `900 30px ${numFam}`; ctx.fillStyle = sub;
+    ctx.fillText(t('totalScore').toUpperCase(), W / 2, 296);
+    ctx.fillStyle = text;
+    if (dark) { ctx.save(); ctx.shadowColor = C('--pad-7'); ctx.shadowBlur = 40; }
+    this.fit(ctx, I18n.fmt(result.total), 900, 160, W - 220, numFam);
+    ctx.fillText(I18n.fmt(result.total), W / 2, 432);
+    if (dark) ctx.restore();
+    const pct = result.maxPossible ? Math.floor(result.total / result.maxPossible * 100) : 0;
+    ctx.font = `700 30px ${numFam}`; ctx.fillStyle = sub;
+    ctx.fillText(`${I18n.fmt(result.total)} / ${I18n.fmt(result.maxPossible)} (${pct}%)`, W / 2, 482);
+    // 진행 바
+    this.rr(ctx, 160, 504, W - 320, 14, 7); ctx.fillStyle = dark ? 'rgba(255,255,255,.1)' : 'rgba(43,43,58,.08)'; ctx.fill();
+    const grad = ctx.createLinearGradient(160, 0, W - 160, 0);
+    cols.forEach((c, i) => grad.addColorStop(i / 3, c));
+    this.rr(ctx, 160, 504, Math.max(14, (W - 320) * Math.min(1, pct / 100)), 14, 7); ctx.fillStyle = grad; ctx.fill();
+    if (result.fullPerfect) {
+      ctx.font = `900 28px ${numFam}`; ctx.fillStyle = C('--perfect'); ctx.fillText('★ ' + t('allPerfect') + ' ★', W / 2, 256);
+    }
+
+    // 3. 점수 구성
+    const rows = [[t('scoreHit'), result.breakdown.hit], [t('scoreRound'), result.breakdown.round], [t('scoreCombo'), result.breakdown.combo], [t('scoreSpecial'), result.breakdown.special]];
+    if (result.wrongHits) rows.push([t('scorePenalty'), -result.breakdown.penalty]);
+    rows.push([t('scoreMultiplier'), '× ' + result.breakdown.multiplier.toFixed(2)]);
+    let y = 580;
+    const rowH = 48;
+    rows.forEach(([k, v]) => {
+      ctx.textAlign = 'left'; ctx.fillStyle = sub; this.fit(ctx, k, 700, 30, 560, fam); ctx.fillText(k, 140, y);
+      ctx.textAlign = 'right'; ctx.fillStyle = typeof v === 'number' && v < 0 ? C('--danger') : text;
+      ctx.font = `800 32px ${numFam}`;
+      ctx.fillText(typeof v === 'number' ? (v < 0 ? '−' + I18n.fmt(-v) : I18n.fmt(v)) : v, W - 140, y);
+      y += rowH;
+    });
+    ctx.textAlign = 'center'; ctx.fillStyle = text; ctx.font = `700 30px ${fam}`;
+    const accLine = `${t('accuracy')} ${result.accuracy.toFixed(1)}%  ·  ${t('maxCombo')} ${result.maxPerfectCombo}`;
+    this.fit(ctx, accLine, 700, 30, W - 220, fam);
+    ctx.fillText(accLine, W / 2, y + 8);
+
+    // 4. 판정 개수 칩 (패드 색)
+    const chips = [['PERFECT', result.counts.perfect, cols[3]], ['GREAT', result.counts.great, cols[2]], ['GOOD', result.counts.good, cols[1]], ['MISS', result.counts.miss, cols[0]]];
+    const cy = y + 36, cw = 196, gap = 16, cx0 = (W - (cw * 4 + gap * 3)) / 2;
+    chips.forEach(([k, v, c], i) => {
+      const x = cx0 + i * (cw + gap);
+      this.rr(ctx, x, cy, cw, 92, 24); ctx.fillStyle = c; ctx.fill();
+      ctx.fillStyle = '#2F2540'; ctx.textAlign = 'center';
+      ctx.font = `800 22px ${numFam}`; ctx.fillText(k, x + cw / 2, cy + 36);
+      ctx.font = `900 38px ${numFam}`; ctx.fillText(String(v), x + cw / 2, cy + 76);
+    });
+
+    // 5. 라운드 등급 배지 8개
+    const gradeCol = { PERFECT: C('--perfect'), GREAT: C('--great'), GOOD: C('--good'), BREAK: C('--miss') };
+    const gradeTxt = { PERFECT: 'P', GREAT: 'G', GOOD: 'Go', BREAK: 'X' };
+    const by = cy + 92 + 58, bs = 104, bx0 = W / 2 - bs * 3.5;
+    result.roundGrades.forEach((gname, i) => {
+      const x = bx0 + i * bs;
+      ctx.beginPath(); ctx.arc(x, by, 38, 0, Math.PI * 2); ctx.fillStyle = gradeCol[gname]; ctx.fill();
+      ctx.fillStyle = gname === 'PERFECT' || gname === 'GREAT' ? '#1A1628' : '#fff';
+      ctx.font = `900 28px ${numFam}`; ctx.textAlign = 'center'; ctx.fillText(gradeTxt[gname], x, by + 10);
+      ctx.fillStyle = sub; ctx.font = `700 18px ${numFam}`; ctx.fillText('R' + (i + 1), x, by + 64);
+    });
+
+    // 6. 타이밍 성향
+    if (tend) {
+      ctx.fillStyle = text; ctx.textAlign = 'center';
+      this.fit(ctx, tend, 800, 36, W - 220, fam);
+      ctx.fillText(tend, W / 2, Math.min(by + 116, H - 190));
+    }
+    // 7. 하단 정보
+    const site = /^https?:$/.test(location.protocol) ? location.host : 'rhythm-master.example';
+    ctx.fillStyle = sub; ctx.textAlign = 'center';
+    const foot1 = `BPM ${result.bpm} · ${lvl} · ${site}`;
+    this.fit(ctx, foot1, 700, 26, W - 220, fam); ctx.fillText(foot1, W / 2, H - 130);
+    const foot2 = t('challengeCode', { seed: result.seed });
+    ctx.fillStyle = text; this.fit(ctx, foot2, 800, 28, W - 220, fam); ctx.fillText(foot2, W / 2, H - 92);
+
+    return new Promise(res => cv.toBlob(b => res(b), 'image/png'));
+  },
+};
+function hexA(color, a) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(color.trim());
+  if (!m) return color;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+}
+function tendencyText(avg) {
+  if (avg == null) return '';
+  const ms = Math.round(avg);
+  const sign = ms > 0 ? '+' : ms < 0 ? '−' : '±';
+  const avgStr = t('avgTiming', { ms: sign + Math.abs(ms) });
+  if (Math.abs(avg) <= 10) return `±10ms · ${t('tendencyOn')}`;
+  return `${avgStr} · ${avg > 0 ? t('tendencyLate') : t('tendencyEarly')}`;
+}
+
+/* =========================================================================
+   결과 화면 연출 — 점수 촤르륵
+   ========================================================================= */
+const ResultView = {
+  skipped: false, animating: false, waiters: new Set(),
+  wait(ms) {
+    if (this.skipped) return Promise.resolve();
+    return new Promise(res => {
+      const done = () => { clearTimeout(id); this.waiters.delete(done); res(); };
+      const id = setTimeout(done, ms);
+      this.waiters.add(done);
+    });
+  },
+  skip() {
+    if (!this.animating || this.skipped) return;
+    this.skipped = true;
+    Array.from(this.waiters).forEach(f => f());
+  },
+  countUp(el, to, dur, ease, fmtFn) {
+    fmtFn = fmtFn || (v => I18n.fmt(v));
+    if (this.skipped || dur <= 0 || to === 0) { el.textContent = fmtFn(to); return Promise.resolve(); }
+    return new Promise(res => {
+      const t0 = performance.now(); let lastTick = 0;
+      const step = () => {
+        const k = clamp((performance.now() - t0) / dur, 0, 1);
+        if (this.skipped || k >= 1) { el.textContent = fmtFn(to); res(); return; }
+        const e = ease(k);
+        el.textContent = fmtFn(Math.round(to * e));
+        const now = performance.now();
+        if (now - lastTick >= 40) { lastTick = now; AudioEngine.countTick(k); }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  },
+  row(cls, label, sub, id) {
+    const li = document.createElement('li');
+    li.className = 'score-row ' + cls;
+    li.innerHTML = `<span class="lbl"></span><span class="val num" id="${id}">0</span>${sub != null ? '<span class="sub"></span>' : ''}`;
+    $('.lbl', li).textContent = label;
+    if (sub != null) { if (sub instanceof Node) $('.sub', li).appendChild(sub); else $('.sub', li).textContent = sub; }
+    return li;
+  },
+  async play(res, isNewRecord, best) {
+    this.skipped = false; this.animating = true;
+    const easeOutCubic = k => 1 - Math.pow(1 - k, 3);
+    const easeOutExpo = k => (k >= 1 ? 1 : 1 - Math.pow(2, -10 * k));
+    const bd = res.breakdown;
+    const ul = $('#score-rows'); ul.innerHTML = '';
+    $('#total-num').textContent = '0';
+    $('#new-record').hidden = true;
+    $('#achieve-block').classList.remove('in'); $('#achieve-meter').style.width = '0';
+    $('#result-extra').classList.remove('in');
+    $('#skip-hint').hidden = false;
+    $('#result-meta').textContent = `#${res.seed} · BPM ${res.bpm} · ${t(res.level)}`;
+    this.fillExtras(res, best);
+
+    const rows = [];
+    rows.push([this.row('', t('scoreHit'), `PERFECT ${res.counts.perfect} · GREAT ${res.counts.great} · GOOD ${res.counts.good}`, 'rv-hit'), bd.hit, 800]);
+    const badges = document.createElement('div'); badges.className = 'round-badges';
+    const short = { PERFECT: 'P', GREAT: 'G', GOOD: 'Go', BREAK: 'X' };
+    res.roundGrades.forEach((g, i) => { const b = document.createElement('span'); b.className = 'rb ' + g; b.textContent = short[g]; b.title = `R${i + 1} ${g}`; badges.appendChild(b); });
+    rows.push([this.row('', t('scoreRound'), badges, 'rv-round'), bd.round, 600, 'badges']);
+    rows.push([this.row('', t('scoreCombo'), t('maxComboN', { n: res.maxPerfectCombo }), 'rv-combo'), bd.combo, 600]);
+    if (bd.special > 0) rows.push([this.row('special', t('scoreSpecial'), res.specials.map(s => (s.i18n ? t(s.i18n) : s.label)).join(' · '), 'rv-special'), bd.special, 700]);
+    if (res.wrongHits > 0) rows.push([this.row('penalty', t('scorePenalty'), t('wrongHitCount', { n: res.wrongHits }), 'rv-pen'), -bd.penalty, 500]);
+    rows.push([this.row('mult', t('scoreMultiplier'), `${t(res.level)} ×${bd.levelMul.toFixed(1)} · BPM ${res.bpm} ×${bd.bpmMul.toFixed(2)}`, 'rv-mul'), null, 0, 'mult']);
+    rows.forEach(([li]) => ul.appendChild(li));
+
+    const rm = reducedMotion();
+    if (rm) this.skipped = true;
+    for (const [li, value, dur, kind] of rows) {
+      li.classList.add('in');
+      await this.wait(180);
+      const val = $('.val', li);
+      if (kind === 'badges') {
+        for (const b of $$('.rb', li)) { b.classList.add('stamp'); if (!this.skipped) AudioEngine.tap(); await this.wait(100); }
+      }
+      if (kind === 'mult') { val.textContent = '× ' + bd.multiplier.toFixed(2); await this.wait(350); continue; }
+      if (value < 0) await this.countUp(val, -value, dur, easeOutCubic, v => '−' + I18n.fmt(v));
+      else await this.countUp(val, value, dur, easeOutCubic);
+      await this.wait(160);
+    }
+    // 총점: 1.8초 easeOutExpo — 빠르게 돌다가 끝에서 조용히 멈춤 (마무리 효과음·튕김 없음)
+    await this.countUp($('#total-num'), res.total, 1800, easeOutExpo);
+    this.skipped = true;   // 이후 대기 없이 마무리
+    $$('.score-row').forEach(li => li.classList.add('in'));
+    $$('.rb').forEach(b => b.classList.add('stamp'));
+    const pct = res.maxPossible ? Math.floor(res.total / res.maxPossible * 100) : 0;
+    $('#achieve-block').classList.add('in');
+    requestAnimationFrame(() => { $('#achieve-meter').style.width = Math.min(100, pct) + '%'; });
+    if (isNewRecord) $('#new-record').hidden = false;
+    $('#result-extra').classList.add('in');
+    $('#skip-hint').hidden = true;
+    this.animating = false;
+  },
+  fillExtras(res, best) {
+    const pct = res.maxPossible ? Math.floor(res.total / res.maxPossible * 100) : 0;
+    $('#achieve-text').textContent = `${I18n.fmt(res.total)} / ${I18n.fmt(res.maxPossible)} (${pct}%)`;
+    $('#st-acc').textContent = res.accuracy.toFixed(1) + '%';
+    $('#st-combo').textContent = String(res.maxPerfectCombo);
+    $('#st-tendency').textContent = tendencyText(res.avgDeltaMs) || '—';
+    $('#st-best').textContent = I18n.fmt(best);
+    $('#st-max').textContent = I18n.fmt(res.maxPossible);
+    const c = res.counts, tot = Math.max(1, res.totalNotes);
+    const parts = [['PERFECT', c.perfect, '--perfect'], ['GREAT', c.great, '--great'], ['GOOD', c.good, '--good'], ['MISS', c.miss, '--miss']];
+    $('#dist-bar').innerHTML = parts.map(([, v, col]) => `<i style="width:${(v / tot * 100).toFixed(2)}%;background:var(${col})"></i>`).join('');
+    $('#dist-legend').innerHTML = parts.map(([k, v, col]) => `<span style="--c:var(${col})">${k} ${v}</span>`).join('') +
+      (res.wrongHits ? `<span style="--c:var(--danger)">✕ ${res.wrongHits}</span>` : '');
+    $('#st-server-card').hidden = true;
+  },
+  showServer(stats) {
+    if (!stats || !stats.plays) return;
+    $('#st-server').textContent = t('serverStats', { plays: I18n.fmt(stats.plays), pct: stats.topPercent });
+    $('#st-server-card').hidden = false;
+  },
+};
+
+/* =========================================================================
+   타이밍 보정 — 메트로놈 8박에 맞춰 탭 → 평균(중앙값) 오차를 userOffset 으로
+   ========================================================================= */
+const Calibration = {
+  active: false,
+  LEAD: 4, TAPS: 8, BPM: 90,
+  async start() {
+    const ok = await AudioEngine.ensure();
+    if (!ok) { UI.toast(t('noAudio')); return; }
+    $('#settings-main').hidden = true; $('#calib-panel').hidden = false;
+    const dots = $('#calib-dots'); dots.innerHTML = '';
+    for (let i = 0; i < this.LEAD + this.TAPS; i++) { const d = document.createElement('i'); if (i < this.LEAD) d.className = 'lead'; dots.appendChild(d); }
+    this.dots = $$('i', dots);
+    this.beat = 60 / this.BPM;
+    this.origin = AudioEngine.ctx.currentTime + 0.4;
+    for (let i = 0; i < this.LEAD + this.TAPS; i++) AudioEngine.tick(this.origin + i * this.beat, i % 4 === 0, true);
+    this.deltas = []; this.used = new Set();
+    this.active = true;
+    $('#calib-status').textContent = t('calibListen');
+    const loop = () => {
+      if (!this.active) return;
+      const now = AudioEngine.audible();
+      const k = Math.floor((now - this.origin) / this.beat);
+      this.dots.forEach((d, i) => d.classList.toggle('beat', i === k));
+      if (k >= this.LEAD && k < this.LEAD + this.TAPS) $('#calib-status').textContent = t('calibTap', { n: Math.min(this.TAPS, this.deltas.length + 1) });
+      if (now > this.origin + (this.LEAD + this.TAPS) * this.beat + 0.4) { this.finish(); return; }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
+  tap(ts) {
+    if (!this.active) return;
+    AudioEngine.drum(9);
+    const tt = AudioEngine.audible(InputManager.normTs(ts));
+    const k = Math.round((tt - this.origin) / this.beat);
+    if (k < this.LEAD || k >= this.LEAD + this.TAPS || this.used.has(k)) return;
+    const d = tt - (this.origin + k * this.beat);
+    if (Math.abs(d) > this.beat * 0.45) return;
+    this.used.add(k); this.deltas.push(d);
+    this.dots[k].classList.add('hit');
+  },
+  finish() {
+    this.active = false;
+    if (this.deltas.length < 4) { $('#calib-status').textContent = t('calibFail'); return; }
+    const s = this.deltas.slice().sort((a, b) => a - b);
+    const med = s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+    const ms = clamp(Math.round(med * 1000 / 5) * 5, -CONFIG.OFFSET_MAX_MS, CONFIG.OFFSET_MAX_MS);
+    Settings.set('offsetMs', ms);
+    UI.syncSettings();
+    $('#calib-status').textContent = t('calibDone', { ms: (ms > 0 ? '+' : '') + ms });
+    setTimeout(() => { if (!this.active) this.close(); }, 1400);
+  },
+  close() {
+    this.active = false;
+    $('#settings-main').hidden = false; $('#calib-panel').hidden = true;
+  },
+};
+
+/* =========================================================================
+   UI 도우미 — 모달, 토스트, 설정 폼
+   ========================================================================= */
+const UI = {
+  openModal(id) {
+    const m = $('#' + id); m.hidden = false;
+    this.lastFocus = document.activeElement;
+    const f = $('[data-close]', m); if (f) f.focus({ preventScroll: true });
+  },
+  closeModal(m) {
+    if (typeof m === 'string') m = $('#' + m);
+    if (!m || m.hidden) return;
+    if (m.id === 'modal-settings') Calibration.close();
+    m.hidden = true;
+    if (this.lastFocus && this.lastFocus.focus) this.lastFocus.focus({ preventScroll: true });
+  },
+  openModalEl() { return $$('.modal').find(m => !m.hidden); },
+  toast(msg) {
+    const el = $('#toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(this._tt); this._tt = setTimeout(() => el.classList.remove('show'), 2200);
+  },
+  syncSettings() {
+    const d = Settings.data;
+    $('#set-bpm').value = d.bpm; $('#out-bpm').textContent = d.bpm;
+    $('#set-volume').value = Math.round(d.volume * 100); $('#out-volume').textContent = Math.round(d.volume * 100) + '%';
+    $('#set-offset').value = d.offsetMs; $('#out-offset').textContent = (d.offsetMs > 0 ? '+' : '') + d.offsetMs + 'ms';
+    $('#set-metronome').checked = d.metronome;
+    $('#set-vibration').checked = d.vibration;
+    $$('#set-level button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === d.level)));
+    Theme.apply();
+  },
+  initSettings() {
+    $('#set-bpm').addEventListener('input', e => { Settings.set('bpm', +e.target.value); $('#out-bpm').textContent = e.target.value; });
+    $('#set-volume').addEventListener('input', e => { const v = +e.target.value / 100; Settings.set('volume', v); AudioEngine.setVolume(v); $('#out-volume').textContent = e.target.value + '%'; });
+    $('#set-volume').addEventListener('change', () => AudioEngine.drum(9));
+    $('#set-offset').addEventListener('input', e => { Settings.set('offsetMs', +e.target.value); UI.syncSettings(); });
+    $('#set-metronome').addEventListener('change', e => Settings.set('metronome', e.target.checked));
+    $('#set-vibration').addEventListener('change', e => Settings.set('vibration', e.target.checked));
+    $('#set-level').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const prev = Settings.data.level, next = b.dataset.v;
+      // 난이도별 기본 BPM (쉬움 75): 사용자가 BPM 을 직접 바꾸지 않았다면 함께 조정
+      if (Settings.data.bpm === CONFIG.LEVEL_DEFAULT_BPM[prev]) Settings.set('bpm', CONFIG.LEVEL_DEFAULT_BPM[next]);
+      Settings.set('level', next); UI.syncSettings();
+    });
+    $('#set-theme').addEventListener('click', e => { const b = e.target.closest('button'); if (b) Theme.set(b.dataset.v); });
+    $('#btn-calib').addEventListener('click', () => Calibration.start());
+    $('#btn-calib-cancel').addEventListener('click', () => Calibration.close());
+    $('#calib-pad').addEventListener('pointerdown', e => { e.preventDefault(); Calibration.tap(e.timeStamp); });
+    if (!('vibrate' in navigator)) $('#vibration-item').hidden = true;
+  },
+};
+
+/* =========================================================================
+   API — 서버 기록(선택). 파일로 직접 열었거나 서버가 없으면 조용히 생략
+   ========================================================================= */
+const Api = {
+  enabled: /^https?:$/.test(location.protocol),
+  async submit(res) {
+    if (!this.enabled) return null;
+    try {
+      const r = await fetch('api/scores', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seed: res.seed, bpm: res.bpm, level: res.level, score: res.total,
+          accuracy: Math.round(res.accuracy * 100) / 100, maxCombo: res.maxPerfectCombo }),
+      });
+      return r.ok ? await r.json() : null;
+    } catch (e) { return null; }
+  },
+};
+
+/* =========================================================================
+   12. App — 화면 전환 상태머신 (title → countIn → playing → paused → result)
+   ========================================================================= */
+const App = {
+  state: 'title',
+  game: null,
+  challenge: null,
+  lastResult: null,
+  shareBlob: null,
+  wakeLock: null,
+
+  init() {
+    Settings.load();
+    Theme.init(Settings.data.theme);
+    AudioEngine.volume = Settings.data.volume;
+    Renderer.build();
+    // 언어 선택 옵션
+    $$('.lang-select').forEach(sel => {
+      sel.innerHTML = LANGS.map(([v, n]) => `<option value="${v}">${n}</option>`).join('');
+      sel.addEventListener('change', e => I18n.set(e.target.value, true));
+    });
+    I18n.set(I18n.detect(), false);
+    this.readChallenge();
+    UI.initSettings(); UI.syncSettings();
+    InputManager.init((id, perf, touch) => this.onPad(id, perf, touch));
+    this.bind();
+    this.refreshTitle();
+    if (!AudioEngine.supported) $('#no-audio-msg').hidden = false;
+    const iOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (iOS) $('#ios-msg').hidden = false;
+    requestAnimationFrame(ts => this.loop(ts));
+  },
+
+  readChallenge() {
+    const q = new URLSearchParams(location.search);
+    if (!q.has('seed')) return;
+    const seed = parseInt(q.get('seed'), 10);
+    if (!Number.isFinite(seed) || seed < 0 || seed > 0xFFFFFFFF) return;
+    let bpm = parseInt(q.get('bpm'), 10);
+    bpm = Number.isFinite(bpm) ? clamp(Math.round(bpm / 5) * 5, CONFIG.BPM_MIN, CONFIG.BPM_MAX) : CONFIG.DEFAULT_BPM;
+    const level = LEVELS.includes(q.get('lv')) ? q.get('lv') : 'normal';
+    this.challenge = { seed, bpm, level };
+  },
+  challengeUrl(res) {
+    const u = new URL(location.href);
+    u.search = ''; u.hash = '';
+    u.searchParams.set('seed', res.seed); u.searchParams.set('bpm', res.bpm); u.searchParams.set('lv', res.level);
+    return u.toString();
+  },
+
+  bind() {
+    $('#btn-start').addEventListener('click', () => this.start());
+    $('#btn-howto').addEventListener('click', () => { AudioEngine.tap(); UI.openModal('modal-howto'); });
+    $('#btn-settings').addEventListener('click', () => { AudioEngine.tap(); UI.syncSettings(); UI.openModal('modal-settings'); });
+    $('#btn-clear-challenge').addEventListener('click', () => {
+      this.challenge = null;
+      try { history.replaceState(null, '', location.pathname); } catch (e) { /* noop */ }
+      this.refreshTitle();
+    });
+    $$('.theme-toggle').forEach(b => b.addEventListener('click', () => Theme.toggle()));
+    $$('.modal').forEach(m => {
+      m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-close]')) UI.closeModal(m); });
+    });
+    $('#hub').addEventListener('pointerdown', e => { e.preventDefault(); this.pause(); });
+    $('#btn-resume').addEventListener('click', () => this.resume());
+    $('#btn-pause-retry').addEventListener('click', () => this.retry());
+    $('#btn-pause-home').addEventListener('click', () => this.home());
+    $('#btn-retry').addEventListener('click', () => this.retry());
+    $('#btn-home').addEventListener('click', () => this.home());
+    $('#btn-share').addEventListener('click', () => this.share());
+    $('#btn-challenge').addEventListener('click', () => this.copyChallenge());
+    $('#screen-result').addEventListener('pointerdown', () => ResultView.skip());
+
+    document.addEventListener('keydown', e => this.onKey(e));
+    document.addEventListener('keyup', e => { const id = KEY_TO_PAD[e.code]; if (id) Renderer.setPressed(id, false); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.pause(); });
+    window.addEventListener('pagehide', () => this.pause());
+    // 첫 상호작용 때 오디오 컨텍스트 준비 (iOS 잠금 해제)
+    const prime = () => { AudioEngine.ensure(); window.removeEventListener('pointerdown', prime, true); window.removeEventListener('keydown', prime, true); };
+    window.addEventListener('pointerdown', prime, true);
+    window.addEventListener('keydown', prime, true);
+  },
+
+  onKey(e) {
+    if (Calibration.active) {
+      if (KEY_TO_PAD[e.code] || e.code === 'Space') { e.preventDefault(); if (!e.repeat) Calibration.tap(e.timeStamp); }
+      else if (e.code === 'Escape') Calibration.close();
+      return;
+    }
+    const modal = UI.openModalEl();
+    if (modal) { if (e.code === 'Escape') UI.closeModal(modal); return; }
+    const inGame = this.state === 'countIn' || this.state === 'playing';
+    const pad = KEY_TO_PAD[e.code];
+    if (pad) {
+      if (inGame) { e.preventDefault(); if (!e.repeat) InputManager.press(pad, e.timeStamp, false); }
+      return;
+    }
+    const onControl = e.target && e.target.closest && e.target.closest('button, select, input, a');
+    if (e.code === 'Space') {
+      if (inGame) { e.preventDefault(); this.pause(); }
+      else if (this.state === 'paused') { e.preventDefault(); this.resume(); }
+    } else if (e.code === 'Escape') {
+      if (inGame) this.pause(); else if (this.state === 'paused') this.resume();
+    } else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+      if (onControl && e.code === 'Enter') return;   // 포커스된 버튼은 기본 동작
+      if (this.state === 'title') { e.preventDefault(); this.start(); }
+      else if (this.state === 'result') { e.preventDefault(); if (ResultView.animating) ResultView.skip(); else this.retry(); }
+      else if (this.state === 'paused') { e.preventDefault(); this.resume(); }
+    }
+  },
+
+  onPad(id, perf, touch) {
+    let res = null;
+    if (this.game && (this.state === 'countIn' || this.state === 'playing')) res = this.game.onPad(id, perf);
+    AudioEngine.drum(id, res === 'perfect');
+    if (touch && Settings.data.vibration && navigator.vibrate) { try { navigator.vibrate(10); } catch (e) { /* noop */ } }
+  },
+
+  showScreen(name) {
+    $$('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
+    document.body.classList.toggle('playing', name === 'game');
+    if (name === 'result') $('#screen-result').scrollTop = 0;
+  },
+
+  refreshTitle() {
+    const best = Storage.get('rmc.best.v1', 0);
+    $('#title-best').hidden = !(best > 0);
+    $('#title-best-n').textContent = I18n.fmt(best || 0);
+    const c = this.challenge;
+    $('#challenge-card').hidden = !c;
+    if (c) $('#challenge-info').textContent = t('challengeInfo', { seed: c.seed, bpm: c.bpm, level: t(c.level) });
+  },
+  onLanguageChanged() {
+    if (this.state === 'title') this.refreshTitle();
+    if (this.state === 'result' && this.lastResult && !ResultView.animating) {
+      ResultView.fillExtras(this.lastResult, Storage.get('rmc.best.v1', 0));
+      $('#result-meta').textContent = `#${this.lastResult.seed} · BPM ${this.lastResult.bpm} · ${t(this.lastResult.level)}`;
+      this.renderShare();
+    }
+    if (Renderer.game) Renderer.hubScore.textContent = I18n.fmt(Renderer.displayScore || 0);
+  },
+
+  async start(params) {
+    if (this._starting) return;
+    this._starting = true;
+    try {
+      await AudioEngine.ensure();       // 사용자 탭 시점에 생성/resume (iOS)
+      AudioEngine.setVolume(Settings.data.volume);
+      const p = params || (this.challenge ? Object.assign({}, this.challenge)
+        : { seed: randomSeed(), bpm: Settings.data.bpm, level: Settings.data.level });
+      if (this.game) this.game.stop();
+      this.game = new Game(p);
+      Renderer.reset(this.game);
+      $('#pause-overlay').hidden = true;
+      this.showScreen('game');
+      this.game.begin(0);
+      this.state = 'countIn';
+      this.requestWakeLock();
+    } finally { this._starting = false; }
+  },
+  retry() {
+    // 도전 모드면 같은 리듬, 아니면 새 리듬
+    this.start(this.challenge ? Object.assign({}, this.challenge) : null);
+  },
+  home() {
+    if (this.game) this.game.stop();
+    this.game = null; Renderer.game = null;
+    $('#pause-overlay').hidden = true;
+    this.state = 'title';
+    this.releaseWakeLock();
+    this.refreshTitle();
+    this.showScreen('title');
+  },
+  pause() {
+    if (!this.game || (this.state !== 'countIn' && this.state !== 'playing')) return;
+    if (!this.game.pause()) return;
+    this.state = 'paused';
+    $$('.pad.pressed').forEach(p => p.classList.remove('pressed'));
+    $('#pause-overlay').hidden = false;
+    $('#btn-resume').focus({ preventScroll: true });
+  },
+  async resume() {
+    if (this.state !== 'paused' || !this.game) return;
+    await AudioEngine.ensure();
+    $('#pause-overlay').hidden = true;
+    this.game.resume();
+    Renderer.reset(this.game);
+    this.state = 'countIn';
+    this.requestWakeLock();
+  },
+  onAudioInterrupted() {
+    if (this.state === 'countIn' || this.state === 'playing') this.pause();
+  },
+
+  loop() {
+    requestAnimationFrame(ts => this.loop(ts));
+    const g = this.game;
+    if (!g) return;
+    if (this.state === 'countIn' || this.state === 'playing' || this.state === 'ending') {
+      const now = AudioEngine.audible();
+      g.update(now);
+      if (g.state === 'playing' && this.state === 'countIn') this.state = 'playing';
+      if (g.state === 'ending') this.state = 'ending';
+      Renderer.frame(now);
+      if (g.state === 'ending' && performance.now() >= g.endAt) this.showResult();
+    }
+  },
+
+  showResult() {
+    const g = this.game;
+    g.state = 'done';
+    const res = g.buildResult();
+    this.lastResult = res;
+    const prevBest = Storage.get('rmc.best.v1', 0) || 0;
+    const isNew = res.total > prevBest && res.total > 0;
+    if (isNew) Storage.set('rmc.best.v1', res.total);
+    this.state = 'result';
+    this.releaseWakeLock();
+    this.showScreen('result');
+    ResultView.play(res, isNew, Math.max(prevBest, res.total));
+    this.renderShare();
+    Api.submit(res).then(stats => { if (this.lastResult === res) ResultView.showServer(stats); });
+  },
+
+  async renderShare() {
+    const res = this.lastResult; if (!res) return;
+    this.shareBlob = null;
+    const token = (this._shareToken = (this._shareToken || 0) + 1);
+    try {
+      const blob = await ResultCard.render(res);
+      if (token !== this._shareToken || !blob) return;
+      this.shareBlob = blob;
+      const img = $('#share-thumb');
+      if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+      const url = URL.createObjectURL(blob);
+      img.src = url; img.dataset.url = url; img.alt = t('title') + ' ' + I18n.fmt(res.total);
+    } catch (e) { console.warn('share image failed', e); }
+  },
+  async share() {
+    const res = this.lastResult; if (!res) return;
+    if (!this.shareBlob) await this.renderShare();
+    const blob = this.shareBlob; if (!blob) return;
+    const file = new File([blob], 'rhythm-master-result.png', { type: 'image/png' });
+    const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    if (coarse && navigator.canShare && navigator.share) {
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: t('title'), text: t('shareText', { score: I18n.fmt(res.total) }) + '\n' + this.challengeUrl(res) });
+          return;
+        }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'rhythm-master-result.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    UI.toast(t('imageSaved'));
+  },
+  async copyChallenge() {
+    const res = this.lastResult; if (!res) return;
+    const url = this.challengeUrl(res);
+    const text = t('shareText', { score: I18n.fmt(res.total) }) + '\n' + url;
+    let ok = false;
+    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); ok = true; } } catch (e) { /* fallthrough */ }
+    if (!ok) {
+      const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+    }
+    if (ok) UI.toast(t('linkCopied'));
+    else window.prompt(t('copyFail'), url);
+  },
+  async requestWakeLock() {
+    try { if ('wakeLock' in navigator && !this.wakeLock) { this.wakeLock = await navigator.wakeLock.request('screen'); this.wakeLock.addEventListener('release', () => { this.wakeLock = null; }); } } catch (e) { /* 지원 안 함 */ }
+  },
+  releaseWakeLock() { try { if (this.wakeLock) this.wakeLock.release(); } catch (e) { /* noop */ } this.wakeLock = null; },
+};
+
+App.init();
+</script>
+</body>
+</html>
