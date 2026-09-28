@@ -25,6 +25,7 @@
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
 })();
 </script>
+<!--RMC_STATS-->
 <link rel="stylesheet" href="static/fonts/pretendard/pretendardvariable-dynamic-subset.css">
 <style>
 /* =========================================================================
@@ -229,6 +230,7 @@ body.playing .bg-blobs { display: none; }
   margin: 0; font-weight: 850; font-size: clamp(30px, 8.4vw, 46px); line-height: 1.12; letter-spacing: -.03em;
 }
 .title-text p { margin: 8px 0 0; color: var(--text-sub); font-size: clamp(14px, 3.8vw, 17px); font-weight: 500; }
+.players-line { margin: 10px 0 0 !important; font-size: 13.5px !important; font-weight: 750 !important; color: var(--text-sub); }
 .best-card {
   display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px;
   background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow-1);
@@ -383,12 +385,12 @@ kbd {
 
 .float-layer { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 6; pointer-events: none; }
 .combo-chip {
-  position: absolute; left: 0; bottom: calc(clamp(86px, 17vmin, 136px) / 2 + 12px); transform: translateX(-50%);
-  white-space: nowrap; padding: 5px 12px; border-radius: 999px;
-  background: var(--perfect); color: #2B2100; font-family: var(--font-num); font-weight: 900; font-size: clamp(12px, 2.4vmin, 16px);
-  box-shadow: 0 4px 14px rgba(245,183,0,.4);
+  margin-top: 3px; white-space: nowrap; padding: 1px 7px; border-radius: 999px;
+  background: var(--perfect); color: #2B2100; font-weight: 900; font-size: clamp(9px, 1.9vmin, 12px); line-height: 1.5;
 }
-.combo-chip.bump { animation: popIn .25s var(--ease-out-back); }
+/* 위치값(transform)을 건드리지 않는 scale 전용 애니메이션 → 좌우로 튀는 깜빡임 없음 */
+.combo-chip.bump { animation: chipPop .25s var(--ease-out-back); }
+@keyframes chipPop { from { scale: .5; opacity: 0; } to { scale: 1; opacity: 1; } }
 .score-pop {
   position: absolute; left: 0; top: calc(clamp(86px, 17vmin, 136px) / 2 + 8px);
   white-space: nowrap; font-family: var(--font-num); font-weight: 900; font-size: clamp(13px, 2.6vmin, 18px);
@@ -485,12 +487,14 @@ kbd {
 .tier-GOLD { color: #E0A200; }
 .tier-PLATINUM { color: #1FA89B; }
 .tier-DIAMOND { color: #3D7DFF; }
+.tier-MASTER { color: #8A4DFF; }
 .tier-CHALLENGER { background: linear-gradient(90deg, #FF4D6D, #9B5CFF, #2FB4FF); -webkit-background-clip: text; background-clip: text; color: transparent; }
 :root[data-theme="dark"] .tier-BRONZE { color: #E0955A; }
 :root[data-theme="dark"] .tier-SILVER { color: #C9D2DD; }
 :root[data-theme="dark"] .tier-GOLD { color: #FFCB2E; }
 :root[data-theme="dark"] .tier-PLATINUM { color: #4FE0CF; }
 :root[data-theme="dark"] .tier-DIAMOND { color: #7AA8FF; }
+:root[data-theme="dark"] .tier-MASTER { color: #B794FF; }
 .total-num { font-size: clamp(44px, 14vw, 72px); font-weight: 900; line-height: 1; letter-spacing: -.04em; }
 .new-record { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 850; font-size: 12.5px; animation: fadeIn .3s ease-out; }
 .round-badges { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; width: 100%; margin: 14px 0 6px; }
@@ -617,6 +621,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
       <div class="title-text">
         <h1 id="title-h1" data-i18n="title">리듬 마스터 챌린지</h1>
         <p data-i18n="tagline"></p>
+        <p class="players-line" id="players-line" hidden></p>
       </div>
       <div class="best-card" id="title-best" hidden><span>🏆</span><span data-i18n="bestScore"></span><b class="num" id="title-best-n"></b></div>
       <div class="challenge-card" id="challenge-card" hidden>
@@ -663,10 +668,10 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
           <span class="hub-round" id="hub-round">1/8</span>
           <span class="hub-score num" id="hub-score">0</span>
           <span class="hub-count" id="hub-count" hidden>4</span>
+          <span class="combo-chip num" id="combo-chip" hidden></span>
         </div>
       </button>
       <div class="float-layer" id="float-layer" aria-live="polite">
-        <div class="combo-chip" id="combo-chip" hidden></div>
         <div class="round-title" id="round-title" hidden><small>ROUND</small><b class="num" id="round-title-n">1</b><span class="num" id="round-title-of">/8</span></div>
       </div>
     </div>
@@ -733,14 +738,6 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
       <button class="icon-btn" type="button" data-close data-i18n-aria="close">✕</button></div>
 
     <div id="settings-main">
-      <div class="set-group" data-i18n="gameplay"></div>
-      <div class="set-list">
-        <div class="set-item col">
-          <div class="range-row"><span class="lab" data-i18n="bpm"></span><span style="flex:1"></span><output id="out-bpm" class="num"></output></div>
-          <input type="range" id="set-bpm" min="60" max="140" step="5" data-i18n-aria="bpm">
-        </div>
-      </div>
-
       <div class="set-group" data-i18n="sound"></div>
       <div class="set-list">
         <div class="set-item"><span class="lab" data-i18n="metronome"></span>
@@ -831,6 +828,7 @@ const CONFIG = {
     normal: [[1, 2, 4], [1, 2, 3, 4], [1, 2, 3, 4], [2, 3, 4, 6], [2, 3, 4, 5, 6], [3, 4, 5, 6], [3, 4, 5, 6, 7], [3, 4, 5, 6, 7, 8]],
     hard: [[1, 2, 4, 8], [1, 2, 3, 4, 6], [2, 3, 4, 6, 8], [2, 3, 4, 5, 6, 8], [3, 4, 5, 6, 8], [3, 4, 5, 6, 7, 8], [3, 4, 5, 6, 7, 8], [4, 5, 6, 7, 8]],
   },
+  MIN_RANK_SAMPLES: 20,        // 난이도별 기록이 이 수 이상일 때 상위 %·등급을 분포로 계산
   WINDOWS_MS: { perfect: 45, great: 90, good: 140, lastLate: 280 },   // lastLate: 패드별 라운드 마지막 음은 늦게 쳐도 280ms까지 GOOD
   TAIL_BEATS: 1,               // 연주가 끝난 뒤 다음 라운드 카운트 전 여유 박
   START_DELAY_S: 0.1,
@@ -1073,7 +1071,7 @@ const Settings = {
   load() {
     const s = Storage.get('rmc.settings.v1', {});
     const d = Object.assign({}, DEFAULT_SETTINGS, s && typeof s === 'object' ? s : {});
-    d.bpm = clamp(Math.round((+d.bpm || 90) / 5) * 5, CONFIG.BPM_MIN, CONFIG.BPM_MAX);
+    d.bpm = CONFIG.DEFAULT_BPM;   // BPM 은 90 고정
     d.volume = clamp(+d.volume, 0, 1); if (!isFinite(d.volume)) d.volume = 0.8;
     d.offsetMs = clamp(Math.round(+d.offsetMs || 0), -CONFIG.OFFSET_MAX_MS, CONFIG.OFFSET_MAX_MS);
     if (!LEVELS.includes(d.level)) d.level = 'normal';
@@ -1211,16 +1209,16 @@ const I18N = {
 };
 /* 폴리리듬 모드 문구 (위 기본 사전을 덮어씀) */
 const TIER_NAMES = {
-  ko: { BRONZE: '브론즈', SILVER: '실버', GOLD: '골드', PLATINUM: '플래티넘', DIAMOND: '다이아', CHALLENGER: '챌린저' },
-  en: { BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold', PLATINUM: 'Platinum', DIAMOND: 'Diamond', CHALLENGER: 'Challenger' },
-  zh: { BRONZE: '青铜', SILVER: '白银', GOLD: '黄金', PLATINUM: '铂金', DIAMOND: '钻石', CHALLENGER: '挑战者' },
-  ja: { BRONZE: 'ブロンズ', SILVER: 'シルバー', GOLD: 'ゴールド', PLATINUM: 'プラチナ', DIAMOND: 'ダイヤ', CHALLENGER: 'チャレンジャー' },
+  ko: { BRONZE: '브론즈', SILVER: '실버', GOLD: '골드', PLATINUM: '플래티넘', DIAMOND: '다이아', MASTER: '마스터', CHALLENGER: '챌린저' },
+  en: { BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold', PLATINUM: 'Platinum', DIAMOND: 'Diamond', MASTER: 'Master', CHALLENGER: 'Challenger' },
+  zh: { BRONZE: '青铜', SILVER: '白银', GOLD: '黄金', PLATINUM: '铂金', DIAMOND: '钻石', MASTER: '大师', CHALLENGER: '挑战者' },
+  ja: { BRONZE: 'ブロンズ', SILVER: 'シルバー', GOLD: 'ゴールド', PLATINUM: 'プラチナ', DIAMOND: 'ダイヤ', MASTER: 'マスター', CHALLENGER: 'チャレンジャー' },
 };
 Object.keys(TIER_NAMES).forEach(l => Object.keys(TIER_NAMES[l]).forEach(k => { I18N[l]['tier' + k] = TIER_NAMES[l][k]; }));
-Object.assign(I18N.ko, { saveImage: '이미지 저장', rankLevel: '{level} 도전자 중 상위 <b>{pct}%</b>', rankRhythm: '같은 리듬 도전자 중 상위 <b>{pct}%</b>' });
-Object.assign(I18N.en, { saveImage: 'Save Image', rankLevel: 'Top <b>{pct}%</b> of {level} players', rankRhythm: 'Top <b>{pct}%</b> on this rhythm' });
-Object.assign(I18N.zh, { saveImage: '保存图片', rankLevel: '{level}难度挑战者中前 <b>{pct}%</b>', rankRhythm: '同节奏挑战者中前 <b>{pct}%</b>' });
-Object.assign(I18N.ja, { saveImage: '画像を保存', rankLevel: '{level}の挑戦者で上位 <b>{pct}%</b>', rankRhythm: '同じリズムの挑戦者で上位 <b>{pct}%</b>' });
+Object.assign(I18N.ko, { playersNow: '🎮 {n}명이 즐기고 있어요', saveImage: '이미지 저장', rankLevel: '{level} 도전자 중 상위 <b>{pct}%</b>', rankRhythm: '같은 리듬 도전자 중 상위 <b>{pct}%</b>' });
+Object.assign(I18N.en, { playersNow: '🎮 {n} players are enjoying the game', saveImage: 'Save Image', rankLevel: 'Top <b>{pct}%</b> of {level} players', rankRhythm: 'Top <b>{pct}%</b> on this rhythm' });
+Object.assign(I18N.zh, { playersNow: '🎮 {n} 位玩家正在畅玩', saveImage: '保存图片', rankLevel: '{level}难度挑战者中前 <b>{pct}%</b>', rankRhythm: '同节奏挑战者中前 <b>{pct}%</b>' });
+Object.assign(I18N.ja, { playersNow: '🎮 {n}人が遊んでいます', saveImage: '画像を保存', rankLevel: '{level}の挑戦者で上位 <b>{pct}%</b>', rankRhythm: '同じリズムの挑戦者で上位 <b>{pct}%</b>' });
 Object.assign(I18N.ko, {
   tagline: '도형의 꼭짓점마다 톡! 폴리리듬 챌린지',
   pcHint: 'PC: Q · W · A · S 키로 플레이 (동시에 여러 개 OK)',
@@ -1766,6 +1764,9 @@ const Renderer = {
     });
     const cx = w / 2, cy = h / 2;
     const hubR = ($('#hub').offsetWidth || 100) / 2 + 12;
+    // 가운데 예약 영역: 허브 위(ROUND n 표시)·아래(점수 팝업·라운드 등급 배너)
+    const zone = { x0: cx - Math.min(w * 0.36, 140), x1: cx + Math.min(w * 0.36, 140), y0: cy - hubR - 70, y1: cy + hubR + 90 };
+    const rectDist = (x, y) => Math.hypot(Math.max(zone.x0 - x, 0, x - zone.x1), Math.max(zone.y0 - y, 0, y - zone.y1));
     const safe = this.safeInsets();
     const metaH = 30;   // 도형 아래 라벨 공간
     const dividers = new Map();
@@ -1789,7 +1790,7 @@ const Renderer = {
         const x = bx0 + (bx1 - bx0) * i / steps, y = by0 + (by1 - by0) * j / steps;
         if (!pointInPoly(x, y, poly)) continue;
         let d = Math.min(x - safe.l, w - safe.r - x, y - safe.t, h - safe.b - y - metaH, Math.hypot(x - cx, y - cy) - hubR,
-          Math.hypot(x - cx, y + metaH - cy) - hubR);   // 도형 아래 라벨(×N)도 허브와 겹치지 않게
+          rectDist(x, y), rectDist(x, y + metaH));   // 도형 아래 라벨(×N)도 허브와 겹치지 않게
         for (let k = 0; k < poly.length; k++) d = Math.min(d, segDist(x, y, poly[k], poly[(k + 1) % poly.length]));
         samples.push({ x, y, r: d, dc: Math.hypot(x - (bx0 + bx1) / 2, y - (by0 + by1) / 2) });
         if (d > best.r) best = { x, y, r: d };
@@ -2040,7 +2041,7 @@ const Renderer = {
     if (pc !== this.lastCombo) {
       this.lastCombo = pc;
       this.comboChip.hidden = pc < 2;
-      if (pc >= 2) { this.comboChip.textContent = `PERFECT COMBO ×${pc}`; this.retrigger(this.comboChip, 'bump'); }
+      if (pc >= 2) { this.comboChip.textContent = `COMBO ×${pc}`; this.retrigger(this.comboChip, 'bump'); }
     }
   },
 };
@@ -2095,17 +2096,62 @@ const InputManager = {
 /* =========================================================================
    8. ResultCard — 저장용 결과 이미지 (1080×1350, 캔버스 직접 렌더)
    ========================================================================= */
-/* 총 등급: 이론상 최대 점수 대비 비율 (콤보 보너스 비중이 커서 기준을 너그럽게) */
-const TIERS = [[0.93, 'CHALLENGER'], [0.80, 'DIAMOND'], [0.65, 'PLATINUM'], [0.45, 'GOLD'], [0.25, 'SILVER'], [0, 'BRONZE']];
+/* 총 등급: 같은 난이도 플레이어 중 상위 % 로 결정
+   챌린저 1% · 마스터 3% · 다이아 7% · 플래티넘 14% · 골드 20% · 실버 25% · 브론즈 30% (누적 상한) */
+const TIER_BANDS = [[1, 'CHALLENGER'], [4, 'MASTER'], [11, 'DIAMOND'], [25, 'PLATINUM'], [45, 'GOLD'], [70, 'SILVER'], [100, 'BRONZE']];
+/* 기록이 충분히 쌓이기 전(MIN_RANK_SAMPLES 미만)에만 쓰는 임시 기준: 이론상 최대 점수 대비 비율 */
+const TIER_FALLBACK = [[0.95, 'CHALLENGER'], [0.90, 'MASTER'], [0.82, 'DIAMOND'], [0.70, 'PLATINUM'], [0.55, 'GOLD'], [0.35, 'SILVER'], [0, 'BRONZE']];
 const TIER_COLORS = {
-  light: { BRONZE: '#B8692E', SILVER: '#7F8C9B', GOLD: '#E0A200', PLATINUM: '#1FA89B', DIAMOND: '#3D7DFF' },
-  dark: { BRONZE: '#E0955A', SILVER: '#C9D2DD', GOLD: '#FFCB2E', PLATINUM: '#4FE0CF', DIAMOND: '#7AA8FF' },
+  light: { BRONZE: '#B8692E', SILVER: '#7F8C9B', GOLD: '#E0A200', PLATINUM: '#1FA89B', DIAMOND: '#3D7DFF', MASTER: '#8A4DFF' },
+  dark: { BRONZE: '#E0955A', SILVER: '#C9D2DD', GOLD: '#FFCB2E', PLATINUM: '#4FE0CF', DIAMOND: '#7AA8FF', MASTER: '#B794FF' },
 };
-/** 이론상 최대 점수 대비 비율로 총 등급 결정 */
 function tierOf(res) {
-  const pct = res.maxPossible ? res.total / res.maxPossible : 0;
-  return TIERS.find(([min]) => pct >= min)[1];
+  if (res.topPct != null) return TIER_BANDS.find(([max]) => res.topPct <= max)[1];
+  const ratio = res.maxPossible ? res.total / res.maxPossible : 0;
+  return TIER_FALLBACK.find(([min]) => ratio >= min)[1];
 }
+function fmtPct(p) {
+  if (p < 10) return String(Math.max(0.1, Math.ceil(p * 10) / 10));
+  return String(Math.ceil(p));
+}
+
+/* =========================================================================
+   Stats — 사이트 진입 시 서버가 페이지에 넣어 준 통계 (추가 요청·대기 없음)
+   ========================================================================= */
+const Stats = {
+  data: null,
+  init() {
+    try { if (window.__RMC_STATS__ && typeof window.__RMC_STATS__ === 'object') this.data = window.__RMC_STATS__; } catch (e) { /* noop */ }
+    if (!this.data && Api.enabled) {   // 페이지에 없을 때만(예: 캐시된 HTML) 비동기로 받아 둔다
+      fetch('api/stats').then(r => (r.ok ? r.json() : null)).then(d => { if (d) { this.data = d; App.refreshTitle(); } }).catch(() => {});
+    }
+  },
+  /** 같은 난이도 기록 분포에서 이 점수의 상위 %. 기록이 부족하면 null */
+  topPercent(level, score) {
+    const L = this.data && this.data.levels && this.data.levels[level];
+    if (!L || !(L.plays >= CONFIG.MIN_RANK_SAMPLES) || !Array.isArray(L.s) || !L.s.length) return null;
+    // 점수 내림차순 표본(순위 위치 k, 점수 s)에서 "내 점수보다 높은 기록 수"를 이분 탐색
+    let lo = 0, hi = L.s.length - 1, higher = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (L.s[mid] > score) { higher = L.k[mid]; lo = mid + 1; } else hi = mid - 1;
+    }
+    return clamp((higher + 1) / (L.plays + 1) * 100, 0.1, 100);
+  },
+};
+/* 익명 플레이어 ID (브라우저별) — "몇 명이 즐기고 있는지" 집계용 */
+const Player = {
+  id() {
+    let v = Storage.get('rmc.pid', null);
+    if (typeof v !== 'string' || !/^[A-Za-z0-9_-]{8,64}$/.test(v)) {
+      const u = new Uint8Array(12);
+      try { crypto.getRandomValues(u); } catch (e) { for (let i = 0; i < u.length; i++) u[i] = Math.floor(Math.random() * 256); }
+      v = 'p' + Array.from(u, b => b.toString(16).padStart(2, '0')).join('');
+      Storage.set('rmc.pid', v);
+    }
+    return v;
+  },
+};
 const ResultCard = {
   fontFamily() {
     if (I18n.lang === 'ja') return '"Pretendard JP Variable", "Pretendard Variable", system-ui, sans-serif';
@@ -2257,13 +2303,10 @@ const ResultView = {
     el.className = 'tier tier-' + tier + (el.classList.contains('in') ? ' in' : '');
     el.textContent = t('tier' + tier);
   },
-  /** 서버 순위(상위 %) 표시. 친구 도전 리듬이면 같은 리듬 기준, 아니면 같은 난이도·BPM 기준 */
+  /** 상위 % 표시 (같은 난이도 전체 기록 기준) */
   rankText(res) {
-    const st = res.stats;
-    if (!st) return '';
-    if (res.challenge && st.plays > 1) return t('rankRhythm', { pct: st.topPercent });
-    if (st.levelTopPercent) return t('rankLevel', { pct: st.levelTopPercent, level: t(res.level) });
-    return '';
+    if (res.topPct == null) return '';
+    return t('rankLevel', { pct: fmtPct(res.topPct), level: t(res.level) });
   },
   showRank(res) {
     const el = $('#rank-line');
@@ -2379,7 +2422,6 @@ const UI = {
   },
   syncSettings() {
     const d = Settings.data;
-    $('#set-bpm').value = d.bpm; $('#out-bpm').textContent = d.bpm;
     $('#set-volume').value = Math.round(d.volume * 100); $('#out-volume').textContent = Math.round(d.volume * 100) + '%';
     $('#set-offset').value = d.offsetMs; $('#out-offset').textContent = (d.offsetMs > 0 ? '+' : '') + d.offsetMs + 'ms';
     $('#set-metronome').checked = d.metronome;
@@ -2387,7 +2429,6 @@ const UI = {
     Theme.apply();
   },
   initSettings() {
-    $('#set-bpm').addEventListener('input', e => { Settings.set('bpm', +e.target.value); $('#out-bpm').textContent = e.target.value; });
     $('#set-volume').addEventListener('input', e => { const v = +e.target.value / 100; Settings.set('volume', v); AudioEngine.setVolume(v); $('#out-volume').textContent = e.target.value + '%'; });
     $('#set-volume').addEventListener('change', () => AudioEngine.drum(1));
     $('#set-offset').addEventListener('input', e => { Settings.set('offsetMs', +e.target.value); UI.syncSettings(); });
@@ -2406,16 +2447,16 @@ const UI = {
    ========================================================================= */
 const Api = {
   enabled: /^https?:$/.test(location.protocol),
-  async submit(res) {
-    if (!this.enabled) return null;
+  /** 결과 기록: 백그라운드 전송(keepalive), 화면은 기다리지 않는다 */
+  submit(res) {
+    if (!this.enabled) return;
+    const body = JSON.stringify({
+      seed: res.seed, bpm: CONFIG.DEFAULT_BPM, level: res.level, score: res.total, maxPossible: res.maxPossible,
+      accuracy: Math.round(res.accuracy * 100) / 100, maxCombo: res.maxPerfectCombo, playerId: Player.id(), tier: res.tier,
+    });
     try {
-      const r = await fetch('api/scores', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seed: res.seed, bpm: res.bpm, level: res.level, score: res.total,
-          accuracy: Math.round(res.accuracy * 100) / 100, maxCombo: res.maxPerfectCombo }),
-      });
-      return r.ok ? await r.json() : null;
-    } catch (e) { return null; }
+      fetch('api/plays', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    } catch (e) { /* noop */ }
   },
 };
 
@@ -2442,6 +2483,7 @@ const App = {
     });
     I18n.set(I18n.detect(), false);
     this.readChallenge();
+    Stats.init();
     UI.initSettings(); UI.syncSettings();
     InputManager.init((id, perf, touch) => this.onPad(id, perf, touch));
     this.bind();
@@ -2457,15 +2499,14 @@ const App = {
     if (!q.has('seed')) return;
     const seed = parseInt(q.get('seed'), 10);
     if (!Number.isFinite(seed) || seed < 0 || seed > 0xFFFFFFFF) return;
-    let bpm = parseInt(q.get('bpm'), 10);
-    bpm = Number.isFinite(bpm) ? clamp(Math.round(bpm / 5) * 5, CONFIG.BPM_MIN, CONFIG.BPM_MAX) : CONFIG.DEFAULT_BPM;
+    const bpm = CONFIG.DEFAULT_BPM;   // BPM 고정
     const level = LEVELS.includes(q.get('lv')) ? q.get('lv') : 'normal';
     this.challenge = { seed, bpm, level };
   },
   challengeUrl(res) {
     const u = new URL(location.href);
     u.search = ''; u.hash = '';
-    u.searchParams.set('seed', res.seed); u.searchParams.set('bpm', res.bpm); u.searchParams.set('lv', res.level);
+    u.searchParams.set('seed', res.seed); u.searchParams.set('lv', res.level);
     return u.toString();
   },
 
@@ -2558,6 +2599,9 @@ const App = {
     $('#challenge-card').hidden = !c;
     if (c) $('#challenge-info').textContent = t('challengeInfo', { seed: c.seed, bpm: c.bpm, level: t(c.level) });
     $$('.level-btn').forEach(b => b.classList.toggle('last', b.dataset.level === Settings.data.level));
+    const players = Stats.data && Stats.data.players;
+    $('#players-line').hidden = !(players > 0);
+    if (players > 0) $('#players-line').textContent = t('playersNow', { n: I18n.fmt(players) });
   },
   onLanguageChanged() {
     if (this.state === 'title') this.refreshTitle();
@@ -2645,15 +2689,12 @@ const App = {
     this.state = 'result';
     this.releaseWakeLock();
     this.showScreen('result');
-    res.challenge = !!(this.challenge && this.challenge.seed === res.seed && this.challenge.level === res.level);
+    // 상위 %·등급은 미리 받아 둔 분포로 즉시 계산 (네트워크 대기 없음)
+    res.topPct = Stats.topPercent(res.level, res.total);
+    res.tier = tierOf(res);
     ResultView.play(res, isNew);
     this.renderShare();
-    Api.submit(res).then(stats => {
-      if (!stats || this.lastResult !== res) return;
-      res.stats = stats;
-      ResultView.showRank(res);
-      this.shareBlob = null; this.renderShare();   // 이미지에도 순위 반영
-    });
+    Api.submit(res);   // 비동기 전송, 응답을 기다리지 않음
   },
 
   /** 저장용 이미지를 미리 만들어 둔다 (화면에는 표시하지 않음) */

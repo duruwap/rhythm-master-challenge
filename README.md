@@ -42,7 +42,9 @@ cp scripts/scs-run.sh ~/scs-run.sh
 ## 구성
 
 ```
-app.py              Flask 서버 (페이지 제공 + 같은 리듬 도전 통계 API)
+app.py              Flask 서버 (페이지 제공 + 결과 기록·통계 API)
+game_rules.py       서버 측 점수 검증 규칙 (난이도별 이론상 최대 점수)
+db/, batch/         DDL · 통계 배치
 static/index.html   게임 본체 — 바닐라 HTML/CSS/JS 단일 파일, 외부 라이브러리 없음
 static/fonts/       Pretendard / Pretendard JP 가변 폰트 (자체 호스팅, SIL OFL 1.1)
 startup.sh          기동 스크립트 (scripts/scs-run.sh 사용)
@@ -55,12 +57,33 @@ tests/              서버 테스트 (pytest)
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
+| GET | `/` | 게임 페이지 — 최신 통계를 HTML 에 바로 넣어 보냄(`window.__RMC_STATS__`) → 결과 화면에서 대기 없음 |
+| GET | `/api/stats` | 같은 통계 JSON (플레이어 수, 난이도별 점수 분포) |
+| POST | `/api/plays` | 한 판 결과 기록 `{level, bpm:90, seed, score, maxPossible, accuracy, maxCombo, playerId, tier}` — 클라이언트는 응답을 기다리지 않음 |
 | GET | `/api/health` | 헬스 체크 |
-| POST | `/api/scores` | `{seed, bpm, level, score, accuracy, maxCombo}` 기록 → `{plays, best, rank, topPercent}` |
-| GET | `/api/scores?seed=&bpm=&level=` | 해당 리듬의 도전 횟수·최고 점수 |
 
-점수는 클라이언트에서 계산되므로 경쟁용 랭킹이 아닌 "친구끼리 비교"용 가벼운 통계입니다(범위 검증 + IP당 분당 30회 제한).
-서버 없이 `static/index.html` 을 직접 열어도 게임은 동작합니다(통계·자체 호스팅 폰트만 생략).
+검증: 음수 점수, 리듬 최대치(`maxPossible`)를 넘는 점수, 난이도별 이론상 최대 점수(`game_rules.py`)를 넘는 점수, BPM ≠ 90 은 400 으로 거부합니다. IP당 분당 30회 제한.
+
+## DB · 통계 배치
+
+```
+db/ddl/001_play_detail.sql    플레이 상세 (플레이 일시·익명 플레이어 ID·난이도·시드·점수·최대 점수·정확도·콤보·등급)
+db/ddl/002_score_summary.sql  score_summary (난이도별 점수 분포) · level_summary (난이도별 요약)
+db/ddl/003_site_summary.sql   site_summary (누적 플레이어 수·플레이 수, 오늘 기준)
+batch/build_summary.py        play_detail → summary 테이블 재생성 (한 트랜잭션)
+batch/run_summary.sh          cron 실행용 래퍼 (로그: /scslog/app/rhythm-master-challenge/batch.log)
+```
+
+- DDL 은 서버 기동 시·배치 실행 시 자동 적용됩니다(모두 `IF NOT EXISTS`). summary 가 비어 있으면 서버 기동 시 1회 자동 생성합니다.
+- 주기 실행(예: 10분마다) — `crontab -e`:
+  ```
+  */10 * * * * /scsrun/app/rhythm-master-challenge/batch/run_summary.sh
+  ```
+- **상위 %**: 같은 난이도 기록을 점수 내림차순으로 정렬한 분포(최대 1000개 지점, 기록이 1000판 이하면 전체)를 이용해
+  `(내 점수보다 높은 기록 수 + 1) / (기록 수 + 1)` 로 계산합니다. 사이트 진입 시 받은 분포로 브라우저에서 즉시 계산합니다.
+- **등급**(같은 난이도 상위 %): 챌린저 1% · 마스터 3% · 다이아 7% · 플래티넘 14% · 골드 20% · 실버 25% · 브론즈 30%
+  (누적: ≤1% · ≤4% · ≤11% · ≤25% · ≤45% · ≤70% · 나머지). 난이도별 기록이 20판 미만일 때는 임시로 최대 점수 대비 비율로 매깁니다.
+- 메인 화면에 "🎮 N명이 즐기고 있어요"(누적 플레이어 수)를 표시합니다.
 
 ## 게임 규칙
 
@@ -74,7 +97,7 @@ tests/              서버 테스트 (pytest)
 - 판정 PERFECT ±45ms / GREAT ±90ms / GOOD ±140ms. 라운드 끝부분(패드별 마지막 연주 음과 마무리 박)은 늦게 쳐도 +280ms까지 GOOD 인정. 연주 중 빈 타이밍 누르기는 헛치기(−300)이지만, 방금 친 노트 바로 옆(±250ms)의 재입력은 감점하지 않습니다.
 - 라운드 등급: 전부 PERFECT·헛치기 0 = P, 정확도 90%↑ = G, 75%↑ = Go, 그 외 X
 - 결과: 라운드별 등급, 점수, **총 등급** — 이론상 최대 점수 대비
-  브론즈 < 25% ≤ 실버 < 45% ≤ 골드 < 65% ≤ 플래티넘 < 80% ≤ 다이아 < 93% ≤ 챌린저 (`TIERS` 상수).
+  같은 난이도 플레이어 중 상위 % 로 매깁니다 (아래 'DB · 통계 배치' 참고).
   순위는 같은 난이도·BPM 전체 플레이 대비 "상위 N%" (친구 도전 리듬이면 같은 리듬 기준). "이미지 저장"은 결과 카드 PNG를 다운로드합니다.
 
 ## 조작
