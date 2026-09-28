@@ -435,6 +435,11 @@ kbd {
   animation: spark 1s ease-out forwards;
 }
 @keyframes spark { from { transform: translate(0,0) rotate(0); opacity: 1; } to { transform: translate(var(--x), var(--y)) rotate(260deg); opacity: 0; } }
+.sparkles b {
+  position: absolute; left: 0; top: 0; width: var(--ring); height: var(--ring); margin: calc(var(--ring) / -2) 0 0 calc(var(--ring) / -2);
+  border-radius: 50%; border: 5px solid; opacity: 0; animation: ringBurst .7s ease-out forwards;
+}
+@keyframes ringBurst { 0% { scale: .15; opacity: .9; } 100% { scale: 1; opacity: 0; } }
 
 /* 일시정지 오버레이 */
 .overlay {
@@ -1658,6 +1663,13 @@ class Game {
    7. Renderer — rAF 루프, 화면 분할(clip-path), 도형·공·꼭짓점 두근, 중앙 허브
    ========================================================================= */
 const KEY_LABEL = { TL: 'Q', TR: 'W', BL: 'A', BR: 'S' };
+/* 라운드 등급별 "터지는" 효과 크기 (count: 조각 수, dist: 날아가는 거리 px, size: 조각 크기 px, rings: 퍼지는 링 수) */
+const BURSTS = {
+  MAX: { count: 90, dist: [140, 460], size: [9, 18], dur: 1.5, rings: 3, ringSize: 520, colors: ['--perfect', '--pad-7', '--pad-9', '--pad-1', '--pad-3'] },
+  PERFECT: { count: 60, dist: [120, 380], size: [8, 16], dur: 1.3, rings: 2, ringSize: 420, colors: ['--perfect', '--pad-7', '--pad-9', '--pad-1', '--pad-3'] },
+  GREAT: { count: 32, dist: [90, 260], size: [7, 12], dur: 1.1, rings: 1, ringSize: 300, colors: ['--great', '--pad-1', '--pad-9', '--pad-3'] },
+  GOOD: { count: 16, dist: [70, 170], size: [6, 9], dur: 0.9, rings: 0, ringSize: 0, colors: ['--good', '--pad-9', '--pad-7'] },
+};
 function segDist(px, py, [x1, y1], [x2, y2]) {
   const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
   const u = L ? clamp(((px - x1) * dx + (py - y1) * dy) / L, 0, 1) : 0;
@@ -1899,14 +1911,15 @@ const Renderer = {
     const map = { PERFECT: ['PERFECT ROUND!', 'perfect'], GREAT: ['GREAT ROUND', 'great'], GOOD: ['GOOD ROUND', 'good'], BREAK: ['BREAK', 'break'] };
     const [txt, cls] = map[fx.grade];
     this.banner(txt, 'round ' + cls, 900);
-    if (fx.grade === 'PERFECT') { AudioEngine.arpeggio(); this.sparkles(14); }
+    if (fx.grade === 'PERFECT') AudioEngine.arpeggio();
     else if (fx.grade === 'BREAK') AudioEngine.buu();
+    if (fx.grade !== 'BREAK') this.sparkles(fx.grade);   // PERFECT > GREAT > GOOD 순으로 크게 터짐
     if (fx.bonus > 0) this.scorePop('+' + I18n.fmt(fx.bonus * this.game.score.mul));
     this.updateScoreTarget();
   },
   onFinish(score) {
-    if (score.fullPerfect) { this.banner('FULL PERFECT!', 'big perfect', 1600); this.sparkles(36); AudioEngine.fanfare(); }
-    else if (score.noMiss) { this.banner(t('noMiss'), 'big great', 1500); this.sparkles(18); AudioEngine.arpeggio(); }
+    if (score.fullPerfect) { this.banner('FULL PERFECT!', 'big perfect', 1600); this.sparkles('MAX'); AudioEngine.fanfare(); }
+    else if (score.noMiss) { this.banner(t('noMiss'), 'big great', 1500); this.sparkles('GREAT'); AudioEngine.arpeggio(); }
     this.updateScoreTarget();
   },
   banner(text, cls, ms) {
@@ -1927,20 +1940,35 @@ const Renderer = {
     d.addEventListener('animationend', () => { this.popSlots[slot] = false; d.remove(); });
     this.float.appendChild(d);
   },
-  sparkles(n) {
+  /** 터지는 효과. level: 'PERFECT'(가장 크게) · 'GREAT'(중간) · 'GOOD'(작게) · 'MAX'(FULL PERFECT) */
+  sparkles(level) {
     if (reducedMotion()) return;
+    const P = BURSTS[level] || BURSTS.GOOD;
     const box = document.createElement('div'); box.className = 'sparkles';
-    const colors = ['--pad-7', '--pad-9', '--pad-1', '--pad-3', '--perfect'].map(c => Theme.color(c));
-    for (let i = 0; i < n; i++) {
+    const colors = P.colors.map(c => Theme.color(c));
+    // 퍼지는 링 (PERFECT·GREAT)
+    for (let r = 0; r < P.rings; r++) {
+      const ring = document.createElement('b');
+      ring.style.setProperty('--ring', P.ringSize + 'px');
+      ring.style.borderColor = colors[r % colors.length];
+      ring.style.animationDelay = r * 0.09 + 's';
+      box.appendChild(ring);
+    }
+    for (let i = 0; i < P.count; i++) {
       const s = document.createElement('i');
-      const a = Math.random() * Math.PI * 2, d = 80 + Math.random() * 180;
+      const a = Math.random() * Math.PI * 2, d = P.dist[0] + Math.random() * (P.dist[1] - P.dist[0]);
+      const size = P.size[0] + Math.random() * (P.size[1] - P.size[0]);
       s.style.setProperty('--x', Math.cos(a) * d + 'px'); s.style.setProperty('--y', Math.sin(a) * d + 'px');
+      s.style.width = s.style.height = size.toFixed(1) + 'px';
+      s.style.left = s.style.top = (-size / 2).toFixed(1) + 'px';
+      if (i % 3 === 0) s.style.borderRadius = '50%';
       s.style.background = colors[i % colors.length];
+      s.style.animationDuration = P.dur + 's';
       s.style.animationDelay = Math.random() * 0.12 + 's';
       box.appendChild(s);
     }
     this.float.appendChild(box);
-    setTimeout(() => box.remove(), 1400);
+    setTimeout(() => box.remove(), (P.dur + 0.4) * 1000);
   },
   updateScoreTarget() {
     const target = this.game.score.total();
