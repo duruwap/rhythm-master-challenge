@@ -829,7 +829,8 @@ const CONFIG = {
     normal: [[1, 2, 4], [1, 2, 3, 4], [1, 2, 3, 4], [2, 3, 4, 6], [2, 3, 4, 5, 6], [3, 4, 5, 6], [3, 4, 5, 6, 7], [3, 4, 5, 6, 7, 8]],
     hard: [[1, 2, 4, 8], [1, 2, 3, 4, 6], [2, 3, 4, 6, 8], [2, 3, 4, 5, 6, 8], [3, 4, 5, 6, 8], [3, 4, 5, 6, 7, 8], [3, 4, 5, 6, 7, 8], [4, 5, 6, 7, 8]],
   },
-  WINDOWS_MS: { perfect: 45, great: 90, good: 140 },
+  WINDOWS_MS: { perfect: 45, great: 90, good: 140, lastLate: 280 },   // lastLate: 패드별 라운드 마지막 음은 늦게 쳐도 280ms까지 GOOD
+  TAIL_BEATS: 1,               // 연주가 끝난 뒤 다음 라운드 카운트 전 여유 박
   START_DELAY_S: 0.1,
   SCHED_INTERVAL_MS: 25,
   SCHED_LOOKAHEAD_S: 0.1,
@@ -858,7 +859,7 @@ const CONFIG = {
 /* 키보드는 Q·W·A·S 만 (화면 위치 그대로) */
 const KEY_POS = { KeyQ: 'TL', KeyW: 'TR', KeyA: 'BL', KeyS: 'BR' };
 const LEVELS = ['easy', 'normal', 'hard'];
-const W = { perfect: CONFIG.WINDOWS_MS.perfect / 1000, great: CONFIG.WINDOWS_MS.great / 1000, good: CONFIG.WINDOWS_MS.good / 1000 };
+const W = { perfect: CONFIG.WINDOWS_MS.perfect / 1000, great: CONFIG.WINDOWS_MS.great / 1000, good: CONFIG.WINDOWS_MS.good / 1000, lastLate: CONFIG.WINDOWS_MS.lastLate / 1000 };
 const reducedMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const $ = (s, root = document) => root.querySelector(s);
@@ -1455,7 +1456,7 @@ class ScoreKeeper {
 
 /* =========================================================================
    App-level Game (타임라인·스케줄러·판정 연결)
-   라운드 r = [4박 카운트 (ROUND n 표시)] + [2마디 = 8박 연주]
+   라운드 r = [4박 카운트 (ROUND n 표시)] + [2마디 = 8박 연주] + [여유 1박 (늦은 마지막 입력 인정)]
    ========================================================================= */
 class Game {
   constructor({ seed, bpm, level }) {
@@ -1465,13 +1466,19 @@ class Game {
     this.barBeats = CONFIG.BEATS_PER_BAR;
     this.roundBeats = CONFIG.BEATS_PER_BAR * CONFIG.BARS_PER_ROUND;
     this.prepDur = CONFIG.COUNT_IN_BEATS * this.beatDur;
-    this.segDur = this.prepDur + this.roundBeats * this.beatDur;
+    this.tailDur = CONFIG.TAIL_BEATS * this.beatDur;
+    this.segDur = this.prepDur + this.roundBeats * this.beatDur + this.tailDur;
     this.rounds = PatternGenerator.generate(seed, level);
     this.notes = [];
     let id = 0;
     this.rounds.forEach(r => r.notes.forEach(n => {
       this.notes.push({ id: id++, round: r.index, pad: n.pad, vertex: n.vertex, bar: n.bar, beatPos: n.beatPos,
-        time: 0, judged: false, result: null, deltaMs: null });
+        time: 0, judged: false, result: null, deltaMs: null, lateWin: W.good });
+    }));
+    // 패드별 라운드 마지막 음은 늦은 입력을 더 너그럽게
+    this.rounds.forEach(r => this.layout.forEach((_, pad) => {
+      const mine = this.notes.filter(n => n.round === r.index && n.pad === pad);
+      if (mine.length) mine[mine.length - 1].lateWin = W.lastLate;
     }));
     this.roundNotes = this.rounds.map(r => this.notes.filter(n => n.round === r.index));
     this.padNotes = this.layout.map((_, i) => this.notes.filter(n => n.pad === i));
@@ -1523,6 +1530,9 @@ class Game {
       const beatsLeft = (this.prepDur - inSeg) / this.beatDur;
       return { phase: 'prep', round, beatsLeft, beat: -beatsLeft, bar: 0, barFrac: 0 };
     }
+    if (inSeg >= this.prepDur + this.roundBeats * this.beatDur) {
+      return { phase: 'tail', round, beat: this.roundBeats - 0.001, bar: CONFIG.BARS_PER_ROUND - 1, barFrac: 0, beatsLeft: 0 };
+    }
     const beat = (inSeg - this.prepDur) / this.beatDur;
     const bar = Math.min(CONFIG.BARS_PER_ROUND - 1, Math.floor(beat / this.barBeats));
     return { phase: 'round', round, beat, bar, barFrac: (beat - bar * this.barBeats) / this.barBeats, beatsLeft: 0 };
@@ -1554,7 +1564,7 @@ class Game {
     for (const n of this.padNotes[pad]) {
       if (n.judged || n.round < this.firstRound) continue;
       const d = tIn - n.time;
-      if (Math.abs(d) <= W.good && (!best || Math.abs(d) < Math.abs(bestD))) { best = n; bestD = d; }
+      if (d >= -W.good && d <= n.lateWin && (!best || Math.abs(d) < Math.abs(bestD))) { best = n; bestD = d; }
     }
     if (best) {
       const ad = Math.abs(bestD);
@@ -1585,7 +1595,7 @@ class Game {
     const tv = now - this.offset;
     if (this.state === 'countIn' && this.position(tv).phase === 'round') this.state = 'playing';
     for (const n of this.notes) {
-      if (!n.judged && n.round >= this.firstRound && tv - n.time > W.good) this.judge(n, 'miss', null);
+      if (!n.judged && n.round >= this.firstRound && tv - n.time > n.lateWin) this.judge(n, 'miss', null);
     }
     while (this.nextFinalize < CONFIG.TOTAL_ROUNDS) {
       const r = this.nextFinalize;
@@ -1993,7 +2003,7 @@ const Renderer = {
       this.lastBeatIdx = beatIdx;
       this.hubSegs.forEach((sg, i) => sg.classList.toggle('on', i === beatIdx && pos.phase !== 'end'));
     }
-    const done = pos.phase === 'end' ? CONFIG.TOTAL_ROUNDS : r + (pos.phase === 'round' ? pos.beat / g.roundBeats : 0);
+    const done = pos.phase === 'end' ? CONFIG.TOTAL_ROUNDS : r + (pos.phase === 'round' ? pos.beat / g.roundBeats : pos.phase === 'tail' ? 1 : 0);
     this.hubProg.setAttribute('stroke-dasharray', `${(this.progLen * done / CONFIG.TOTAL_ROUNDS).toFixed(2)} 1000`);
     // 라운드 카운트 동안 ROUND n 크게 표시
     const showTitle = pos.phase === 'prep';
