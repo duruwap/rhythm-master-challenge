@@ -255,138 +255,102 @@ kbd {
   border: 1px solid var(--line); border-bottom-width: 2px; background: var(--surface);
 }
 
+.level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+.level-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px 8px 12px; border-radius: 22px; border: 1px solid var(--line);
+  background: var(--surface); box-shadow: var(--shadow-1); min-width: 0;
+  transition: transform .12s var(--ease-out-back), box-shadow .2s;
+}
+.level-btn:hover { box-shadow: var(--shadow-2); }
+.level-btn:active { transform: scale(.95); }
+.level-btn.last { outline: 2.5px solid var(--text); outline-offset: 2px; }
+.level-btn svg { width: min(64px, 16vw); height: auto; aspect-ratio: 1; }
+.level-btn b { font-size: clamp(15px, 4.2vw, 18px); font-weight: 850; }
+.level-btn small { font-size: 12px; color: var(--text-sub); font-weight: 600; }
+.challenge-card .c-actions { display: flex; gap: 6px; flex: none; }
 /* =========================================================================
-   플레이 화면 — 4분할 패드 + 중앙 허브만 표시
+   플레이 화면 — 화면 전체를 2(좌/우) · 3(피자) · 4(4분할) 조각으로 나눈 패드 + 중앙 허브
+   각 패드는 화면 전체 크기 레이어에 clip-path 로 자기 조각만 남긴다 (터치 판정도 조각 모양).
    ========================================================================= */
-#screen-game { background: var(--pad-gap); padding: 0; }
-.stage { position: relative; flex: 1; min-height: 0; display: flex; }
-/* 화면 전체를 4분할 — 패드 사이는 1px 헤어라인 */
-.pads {
-  position: relative; flex: 1;
-  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-  gap: 1px; background: var(--pad-gap);
-}
+#screen-game { background: var(--bg); padding: 0; }
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.pads { position: absolute; inset: 0; }
 .pad {
-  position: relative; min-width: 0; min-height: 0; overflow: hidden;
-  touch-action: none; -webkit-touch-callout: none;
-  container-type: size; outline: none; cursor: pointer;
-  --edge-t: 0px; --edge-b: 0px;
-}
-.pad[data-pad="7"] { --pad: var(--pad-7); --edge-t: var(--safe-t); }
-.pad[data-pad="9"] { --pad: var(--pad-9); --edge-t: var(--safe-t); }
-.pad[data-pad="1"] { --pad: var(--pad-1); --edge-b: var(--safe-b); }
-.pad[data-pad="3"] { --pad: var(--pad-3); --edge-b: var(--safe-b); }
-.pad-body { position: absolute; inset: 0; transition: opacity .25s; }
-.pad-face {
-  position: absolute; inset: 0; overflow: hidden;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--pad) 78%, #fff) 0%, var(--pad) 60%);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: var(--edge-t) 0 var(--edge-b);
+  position: absolute; inset: 0; clip-path: var(--clip);
+  touch-action: none; -webkit-touch-callout: none; outline: none; cursor: pointer;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pad) 78%, #fff) 0%, var(--pad) 70%);
   color: var(--pad-ink);
 }
-:root[data-theme="dark"] .pad-face { background: linear-gradient(160deg, color-mix(in srgb, var(--pad) 88%, #fff) 0%, var(--pad) 60%); }
-/* 눌림: 패드는 그대로, 살짝 어두워지고 음표만 눌림 */
+:root[data-theme="dark"] .pad { background: linear-gradient(160deg, color-mix(in srgb, var(--pad) 88%, #fff) 0%, var(--pad) 70%); }
+.pad[data-color="0"] { --pad: var(--pad-7); }
+.pad[data-color="1"] { --pad: var(--pad-9); }
+.pad[data-color="2"] { --pad: var(--pad-1); }
+.pad[data-color="3"] { --pad: var(--pad-3); }
 .pad-press { position: absolute; inset: 0; pointer-events: none; background: rgba(20, 10, 40, .10); opacity: 0; transition: opacity 90ms ease-out; }
 :root[data-theme="dark"] .pad-press { background: rgba(255, 255, 255, .10); }
 .pad.pressed .pad-press { opacity: 1; transition-duration: 30ms; }
-.pad.inactive .pad-face { background: var(--pad-inactive); }
-.pad.inactive .pad-body { opacity: .55; }
-.pad.inactive .note, .pad.inactive .pad-dots.cur { visibility: hidden; }
-.pad.is-new .pad-face { animation: newPad 1.4s ease-out; }
-@keyframes newPad { 0%, 30% { filter: brightness(1.18) saturate(1.1); } 100% { filter: none; } }
-
-/* 음표: 유일하게 두근거리는 요소. 접근 링·후광도 음표를 중심으로 */
-.note { position: relative; display: grid; place-items: center; width: 40cqmin; height: 40cqmin; transition: scale 60ms ease-out; }
-.pad.pressed .note { scale: .9; }
-.note-halo {
-  position: absolute; inset: -18%; border-radius: 50%; pointer-events: none; opacity: 0;
-  background: radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,255,255,.45) 38%, rgba(255,255,255,0) 70%);
-  will-change: opacity, transform;
-}
-:root[data-theme="dark"] .note-halo { background: radial-gradient(circle, rgba(255,255,255,.7) 0%, rgba(255,255,255,.25) 40%, rgba(255,255,255,0) 72%); }
-.note-ring {
-  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0;
-  border: clamp(2px, 1.1cqmin, 5px) solid var(--pad-ring);
-  will-change: transform, opacity;
-}
-.note.shake { animation: shake .16s linear; }
-
-
-.pad-icon {
-  font-size: clamp(34px, 34cqmin, 140px); line-height: 1; font-weight: 400;
-  font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Music', 'Noto Sans Symbols 2', var(--font);
-  position: relative; will-change: transform;
-  text-shadow: 0 2px 0 rgba(255,255,255,.35);
-}
-.pad-icon.done { opacity: .35; }
-.pad-key {
-  position: absolute; left: 6cqmin; top: calc(5cqmin + var(--edge-t)); z-index: 1;
-  font-family: var(--font-num); font-weight: 800; font-size: clamp(12px, 7cqmin, 22px);
-  padding: .1em .45em; border-radius: .5em; background: rgba(255,255,255,.45); color: var(--pad-ink);
-}
-:root[data-theme="dark"] .pad-key { background: rgba(0,0,0,.18); }
-@media (hover: none) and (pointer: coarse) { .pad-key { display: none; } }
-.pad-new {
-  position: absolute; right: 6cqmin; top: calc(5cqmin + var(--edge-t)); display: none; z-index: 1;
-  font-family: var(--font-num); font-weight: 900; font-size: clamp(11px, 7cqmin, 20px);
-  padding: .2em .6em; border-radius: 999px; background: var(--text); color: var(--bg);
-}
-/* 가운데 허브와 겹치지 않도록 라벨·박자 스트립은 패드의 바깥쪽 가장자리에 둔다 */
-.pad[data-pad="9"] .pad-key, .pad[data-pad="3"] .pad-key { left: auto; right: 6cqmin; }
-.pad[data-pad="9"] .pad-new, .pad[data-pad="3"] .pad-new { right: auto; left: 6cqmin; }
-.pad[data-pad="1"] .pad-key, .pad[data-pad="3"] .pad-key,
-.pad[data-pad="1"] .pad-new, .pad[data-pad="3"] .pad-new { top: auto; bottom: calc(5cqmin + var(--edge-b)); }
-.pad.is-new .pad-new { display: block; animation: popIn .45s var(--ease-out-back); }
-@keyframes popIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
-
-/* 박자 스트립: 이 패드가 이번 마디 몇 박에 쳐야 하는지 */
-.pad-beats { position: absolute; left: 0; right: 0; top: calc(17cqmin + var(--edge-t)); display: flex; flex-direction: column; align-items: center; gap: 2.2cqmin; }
-.pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: calc(17cqmin + var(--edge-b)); flex-direction: column-reverse; }
-@media (hover: none) and (pointer: coarse) {
-  .pad-beats { top: calc(8cqmin + var(--edge-t)); }
-  .pad[data-pad="1"] .pad-beats, .pad[data-pad="3"] .pad-beats { top: auto; bottom: calc(8cqmin + var(--edge-b)); }
-}
-.pad-dots { display: flex; align-items: center; gap: 2.4cqmin; }
-.dot {
-  width: 7.5cqmin; height: 7.5cqmin; min-width: 7px; min-height: 7px; max-width: 22px; max-height: 22px;
-  border-radius: 50%; border: max(1.5px, .7cqmin) solid currentColor; opacity: .35;
-  display: grid; place-items: center; font-size: 5cqmin; font-weight: 900; line-height: 1;
-  transition: transform .15s var(--ease-out-back), background .15s;
-}
-.dot.half { width: 5cqmin; height: 5cqmin; min-width: 5px; min-height: 5px; }
-.dot.on { background: currentColor; opacity: .85; }
-.dot.now { transform: scale(1.3); }
-.dot.j-perfect { background: var(--perfect); border-color: var(--perfect); opacity: 1; }
-.dot.j-great { background: var(--great); border-color: var(--great); opacity: 1; }
-.dot.j-good { background: var(--good); border-color: var(--good); opacity: 1; }
-.dot.j-miss { background: transparent; border-color: var(--miss); opacity: .9; }
-.dot.j-miss::after { content: '×'; color: var(--pad-ink); font-size: 6cqmin; }
-.pad-next { display: none; align-items: center; gap: 2cqmin; opacity: .45; }
-.pad.show-next .pad-next { display: flex; }
-.next-label { font-family: var(--font-num); font-weight: 900; font-size: clamp(9px, 5cqmin, 15px); letter-spacing: .06em; }
-
 .pad-flash { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: var(--flash, #fff); }
 .pad-flash.go { animation: flash .28s ease-out; }
-@keyframes flash { 0% { opacity: .6; } 100% { opacity: 0; } }
-@keyframes shake { 0%, 100% { translate: 0 0; } 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+@keyframes flash { 0% { opacity: .5; } 100% { opacity: 0; } }
+@keyframes shake { 0%, 100% { translate: 0 0; } 25% { translate: -5px 0; } 75% { translate: 5px 0; } }
+@keyframes popIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+/* 패드 사이 1px 헤어라인 */
+.dividers { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.dividers line { stroke: var(--pad-gap); stroke-width: 1.5; }
+
+/* 도형: 조각 안쪽 중심(--cx, --cy)에 --size 크기로 배치 */
+.shape-box {
+  position: absolute; left: var(--cx); top: var(--cy); width: var(--size); height: var(--size);
+  translate: -50% -50%; pointer-events: none;
+}
+.shape-box.swap { animation: shapeIn .5s var(--ease-out-back); }
+@keyframes shapeIn { from { scale: .5; rotate: -30deg; opacity: 0; } to { scale: 1; rotate: 0deg; opacity: 1; } }
+.shape-box.shake { animation: shake .16s linear; }
+.shape-box svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.shape-fill { fill: rgba(255, 255, 255, .26); stroke: none; }
+:root[data-theme="dark"] .shape-fill { fill: rgba(255, 255, 255, .14); }
+.shape-edge { fill: none; stroke: var(--pad-ink); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; opacity: .5; }
+.v-halo { fill: #fff; opacity: 0; }
+:root[data-theme="dark"] .v-halo { fill: rgba(255, 255, 255, .8); }
+.v-dot { fill: var(--pad-ink); stroke: rgba(255,255,255,.7); stroke-width: 1.6; transition: fill .12s; }
+.v-dot.first { stroke: var(--pad-ink); stroke-width: 2; fill: #fff; }
+.v-dot.j-perfect { fill: var(--perfect); }
+.v-dot.j-great { fill: var(--great); }
+.v-dot.j-good { fill: var(--good); }
+.v-dot.j-miss { fill: var(--miss); }
+.ball { fill: #fff; stroke: var(--pad-ink); stroke-width: 2.6; }
+.shape-meta { position: absolute; left: 50%; top: 100%; translate: -50% 4px; display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.shape-count {
+  font-family: var(--font-num); font-weight: 900; font-size: clamp(11px, calc(var(--size) * .1), 18px);
+  padding: .15em .6em; border-radius: 999px; background: rgba(255,255,255,.45); white-space: nowrap;
+}
+:root[data-theme="dark"] .shape-count { background: rgba(0,0,0,.2); }
+.pad-key {
+  font-family: var(--font-num); font-weight: 800; font-size: clamp(12px, 1.8vmin, 18px);
+  padding: .15em .55em; border-radius: .5em; background: rgba(255,255,255,.45); color: var(--pad-ink); white-space: nowrap;
+}
+:root[data-theme="dark"] .pad-key { background: rgba(0,0,0,.2); }
+@media (hover: none) and (pointer: coarse) { .pad-key { display: none; } }
 
 .judge-pop {
-  position: absolute; left: 50%; top: calc(50% - 26cqmin); z-index: 3; pointer-events: none;
+  position: absolute; left: var(--cx); top: calc(var(--cy) - 0.6em); z-index: 3; pointer-events: none;
   font-family: var(--font-num); font-weight: 900; letter-spacing: .02em; white-space: nowrap;
-  font-size: clamp(16px, 11cqmin, 44px);
-  -webkit-text-stroke: max(3px, .9cqmin) var(--surface); paint-order: stroke fill;
+  font-size: clamp(16px, calc(var(--size) * .16), 40px);
+  -webkit-text-stroke: 4px var(--surface); paint-order: stroke fill;
   animation: judgePop .42s ease-out forwards;
 }
 .judge-pop.perfect { color: var(--perfect); }
 .judge-pop.great { color: var(--great); }
 .judge-pop.good { color: var(--good); }
 .judge-pop.miss { color: var(--miss); }
-.judge-pop.wrong { color: var(--danger); font-size: clamp(14px, 8cqmin, 32px); }
+.judge-pop.wrong { color: var(--danger); font-size: clamp(14px, calc(var(--size) * .12), 30px); }
 @keyframes judgePop {
   0% { opacity: 0; transform: translate(-50%, 8px) scale(.7); }
   18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
   100% { opacity: 0; transform: translate(-50%, -20px) scale(1); }
 }
+.hub-bar { font-family: var(--font-num); font-weight: 800; font-size: clamp(9px, 1.8vmin, 12px); color: var(--text-sub); }
 
 /* 중앙 허브: 박자 링 + 라운드 + 점수. 탭하면 일시정지 */
 .hub {
@@ -474,86 +438,59 @@ kbd {
 .sheet .sheet-row { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
 
 /* =========================================================================
-   결과 화면
+   결과 화면 — 4분할 색 배경 위에 등급·점수·라운드 등급·버튼만
    ========================================================================= */
 #screen-result { overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
-.result-wrap {
-  width: 100%; max-width: 1040px; margin: 0 auto; padding: 16px 16px 28px;
-  display: grid; gap: 14px; grid-template-columns: 1fr;
+.result-bg { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; background: var(--pad-gap); z-index: -1; }
+.result-bg i:nth-child(1) { background: var(--pad-7); }
+.result-bg i:nth-child(2) { background: var(--pad-9); }
+.result-bg i:nth-child(3) { background: var(--pad-1); }
+.result-bg i:nth-child(4) { background: var(--pad-3); }
+.result-wrap { min-height: 100%; display: grid; place-items: center; padding: 20px 16px; }
+.result-card {
+  width: min(440px, 100%); padding: 28px 22px 22px; border-radius: 32px; text-align: center;
+  background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow-2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
-@media (min-width: 860px) {
-  .result-wrap { grid-template-columns: 1.05fr .95fr; align-items: start; padding-top: 28px; }
-  .result-head { grid-column: 1 / -1; }
-  .col-right { position: sticky; top: 16px; }
+:root[data-theme="dark"] .result-card { background: rgba(30, 27, 46, .82); }
+.result-meta { font-family: var(--font-num); font-size: 13px; font-weight: 800; color: var(--text-sub); letter-spacing: .06em; }
+.tier {
+  font-size: clamp(40px, 13vw, 64px); font-weight: 900; line-height: 1.1; letter-spacing: -.02em; margin-top: 6px;
+  min-height: 1.1em; opacity: 0; transform: scale(.7);
+  transition: opacity .35s ease-out, transform .45s var(--ease-out-back);
 }
-.result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.result-head h2 { margin: 0; font-family: var(--font-num); font-weight: 900; font-size: 22px; letter-spacing: .08em; }
-.chip {
-  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
-  background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--text-sub);
-}
-.card {
-  background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius-card);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
-  box-shadow: var(--shadow-1); padding: 16px;
-}
-.col { display: grid; gap: 14px; min-width: 0; }
-.score-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.score-row {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px;
-  padding: 10px 4px; border-bottom: 1px dashed var(--line);
-  opacity: 0; transform: translateX(-18px);
-  transition: opacity .3s ease-out, transform .35s var(--ease-out-back);
-}
-.score-row:last-child { border-bottom: 0; }
-.score-row.in { opacity: 1; transform: none; }
-.score-row .lbl { font-weight: 750; font-size: 15px; }
-.score-row .val { font-weight: 850; font-size: 20px; text-align: right; }
-.score-row .sub { grid-column: 1 / -1; font-size: 12.5px; color: var(--text-sub); font-weight: 600; }
-.score-row.special .val { color: var(--perfect); }
-.score-row.special.in .lbl { background: linear-gradient(90deg, var(--perfect), #FF9EB5, var(--perfect)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.6s linear infinite; }
-@keyframes shimmer { to { background-position: -200% 0; } }
-.score-row.penalty .val { color: var(--danger); }
-.score-row.mult .val { color: var(--accent); }
-.round-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-.rb {
-  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
-  font-family: var(--font-num); font-weight: 900; font-size: 11px; color: #fff;
-  opacity: 0; transform: scale(1.8);
-}
+.tier.in { opacity: 1; transform: none; }
+.tier-BRONZE { color: #B8692E; }
+.tier-SILVER { color: #7F8C9B; }
+.tier-GOLD { color: #E0A200; }
+.tier-PLATINUM { color: #1FA89B; }
+.tier-DIAMOND { color: #3D7DFF; }
+.tier-CHALLENGER { background: linear-gradient(90deg, #FF4D6D, #9B5CFF, #2FB4FF); -webkit-background-clip: text; background-clip: text; color: transparent; }
+:root[data-theme="dark"] .tier-BRONZE { color: #E0955A; }
+:root[data-theme="dark"] .tier-SILVER { color: #C9D2DD; }
+:root[data-theme="dark"] .tier-GOLD { color: #FFCB2E; }
+:root[data-theme="dark"] .tier-PLATINUM { color: #4FE0CF; }
+:root[data-theme="dark"] .tier-DIAMOND { color: #7AA8FF; }
+.total-num { font-size: clamp(44px, 14vw, 72px); font-weight: 900; line-height: 1; letter-spacing: -.04em; }
+.new-record { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 850; font-size: 12.5px; animation: fadeIn .3s ease-out; }
+.round-badges { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; width: 100%; margin: 14px 0 6px; }
+.rb { display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0; transform: scale(1.8); }
 .rb.stamp { opacity: 1; transform: none; transition: transform .16s cubic-bezier(.2,1.6,.4,1), opacity .08s; }
-.rb.PERFECT { background: var(--perfect); color: #2B2100; }
-.rb.GREAT { background: var(--great); color: #06210F; }
-.rb.GOOD { background: var(--good); }
-.rb.BREAK { background: var(--miss); }
-
-.total-card { text-align: center; padding: 20px 16px 18px; position: relative; overflow: hidden; }
-.total-label { font-family: var(--font-num); font-weight: 900; letter-spacing: .14em; font-size: 13px; color: var(--text-sub); }
-.total-num { font-size: clamp(52px, 15vw, 88px); font-weight: 900; line-height: 1.05; margin: 4px 0; letter-spacing: -.04em; }
-.new-record {
-  display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--text); color: var(--bg);
-  font-weight: 850; font-size: 13px; animation: fadeIn .3s ease-out;
+.rb i {
+  width: 100%; max-width: 38px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+  font-style: normal; font-family: var(--font-num); font-weight: 900; font-size: clamp(10px, 3vw, 13px); color: #fff;
 }
-.meter { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 12px 0 6px; }
-.meter i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--pad-7), var(--pad-9), var(--pad-1), var(--pad-3)); transition: width 1s ease-out; }
-.achieve { font-size: 13px; color: var(--text-sub); font-weight: 700; }
-.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.stat { padding: 12px 14px; }
-.stat .k { font-size: 12.5px; color: var(--text-sub); font-weight: 700; }
-.stat .v { font-size: 20px; font-weight: 850; margin-top: 2px; }
-.stat.wide { grid-column: 1 / -1; }
-.dist-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--line); margin: 8px 0; }
-.dist-bar i { display: block; height: 100%; }
-.dist-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; font-weight: 700; }
-.dist-legend span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; background: var(--c); vertical-align: 0; }
-.fade-block { opacity: 0; transform: translateY(8px); transition: opacity .4s ease-out, transform .4s ease-out; }
-.fade-block.in { opacity: 1; transform: none; }
-.fade-block:not(.in) { pointer-events: none; }
-.share-thumb { display: block; width: 100%; max-width: 360px; margin: 0 auto; aspect-ratio: 4 / 5; border-radius: 16px; box-shadow: var(--shadow-2); background: var(--surface-2); object-fit: cover; }
-.result-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.result-buttons .btn { min-width: 0; width: 100%; font-size: 14.5px; padding: 10px 14px; }
-.result-buttons .btn-primary { grid-column: 1 / -1; min-height: 56px; font-size: 17px; }
-.skip-hint { text-align: center; font-size: 12.5px; color: var(--text-sub); font-weight: 600; animation: blink 1.4s ease-in-out infinite; }
+.rb small { font-family: var(--font-num); font-size: 10.5px; font-weight: 800; color: var(--text-sub); }
+.rb.PERFECT i { background: var(--perfect); color: #2B2100; }
+.rb.GREAT i { background: var(--great); color: #06210F; }
+.rb.GOOD i { background: var(--good); }
+.rb.BREAK i { background: var(--miss); }
+.result-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 10px; transition: opacity .3s; }
+.result-buttons .btn { min-width: 0; width: 100%; }
+.result-buttons.wait { opacity: 0; pointer-events: none; }
+.link-btn { border: 0; background: none; color: var(--text-sub); font-weight: 700; font-size: 14px; padding: 10px; margin-top: 2px; }
+.skip-hint { font-size: 12.5px; color: var(--text-sub); font-weight: 600; animation: blink 1.4s ease-in-out infinite; }
 @keyframes blink { 50% { opacity: .35; } }
 
 /* =========================================================================
@@ -657,7 +594,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
       <button class="icon-btn theme-toggle" type="button" data-i18n-aria="theme">☀️</button>
     </header>
     <div class="title-main">
-      <div class="logo-mark" aria-hidden="true"><span>♩</span><span>♪</span><span>♪</span><span>♩</span></div>
+      <div class="logo-mark" aria-hidden="true"><span>●</span><span>▲</span><span>◆</span><span>⬟</span></div>
       <div class="title-text">
         <h1 id="title-h1" data-i18n="title">리듬 마스터 챌린지</h1>
         <p data-i18n="tagline"></p>
@@ -666,10 +603,23 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
       <div class="challenge-card" id="challenge-card" hidden>
         <div style="font-size:28px" aria-hidden="true">🥁</div>
         <div class="c-body"><b data-i18n="challengeBanner"></b><span id="challenge-info"></span></div>
-        <button class="btn" type="button" id="btn-clear-challenge" data-i18n="clearChallenge"></button>
+        <div class="c-actions">
+          <button class="btn btn-primary" type="button" id="btn-challenge-start" data-i18n="challengeStart"></button>
+          <button class="btn" type="button" id="btn-clear-challenge" data-i18n-aria="close">✕</button>
+        </div>
       </div>
       <div class="title-actions">
-        <button class="btn btn-primary btn-big" type="button" id="btn-start"><span data-i18n="start"></span></button>
+        <div class="level-grid" id="level-grid">
+          <button class="level-btn" type="button" data-level="easy">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="17.5" height="36" rx="5" fill="var(--pad-7)"/><rect x="20.5" y="2" width="17.5" height="36" rx="5" fill="var(--pad-9)"/></svg>
+            <b data-i18n="easy"></b><small data-i18n="easyDesc"></small></button>
+          <button class="level-btn" type="button" data-level="normal">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 20 L20 2 L2 2 L2 30.4 Z" fill="var(--pad-7)"/><path d="M20 20 L20 2 L38 2 L38 30.4 Z" fill="var(--pad-9)"/><path d="M20 20 L2 30.4 L2 38 L38 38 L38 30.4 Z" fill="var(--pad-1)"/><circle cx="20" cy="20" r="4" fill="var(--text)"/></svg>
+            <b data-i18n="normal"></b><small data-i18n="normalDesc"></small></button>
+          <button class="level-btn" type="button" data-level="hard">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="17.5" height="17.5" rx="5" fill="var(--pad-7)"/><rect x="20.5" y="2" width="17.5" height="17.5" rx="5" fill="var(--pad-9)"/><rect x="2" y="20.5" width="17.5" height="17.5" rx="5" fill="var(--pad-1)"/><rect x="20.5" y="20.5" width="17.5" height="17.5" rx="5" fill="var(--pad-3)"/></svg>
+            <b data-i18n="hard"></b><small data-i18n="hardDesc"></small></button>
+        </div>
         <div class="row">
           <button class="btn" type="button" id="btn-howto">📖 <span data-i18n="howTo"></span></button>
           <button class="btn" type="button" id="btn-settings">⚙️ <span data-i18n="settings"></span></button>
@@ -678,7 +628,6 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
     </div>
     <footer class="title-foot">
       <p class="kbd-only" data-i18n="pcHint"></p>
-      <p class="kbd-only" data-i18n="altKeyHint"></p>
       <p class="warn" id="no-audio-msg" data-i18n="noAudio" hidden></p>
       <p id="ios-msg" data-i18n="iosMute" hidden></p>
     </footer>
@@ -688,6 +637,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
   <section id="screen-game" class="screen" aria-label="game">
     <div class="stage">
       <div class="pads" id="pads"></div>
+      <svg class="dividers" id="dividers" aria-hidden="true"></svg>
       <button class="hub" type="button" id="hub" data-i18n-aria="pause">
         <svg viewBox="0 0 100 100" aria-hidden="true" id="hub-svg"></svg>
         <div class="hub-inner">
@@ -716,47 +666,21 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
 
   <!-- ================= 결과 화면 ================= -->
   <section id="screen-result" class="screen" aria-labelledby="result-h">
+    <div class="result-bg" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="result-wrap">
-      <div class="result-head">
-        <h2 id="result-h">RESULT</h2>
-        <span class="chip num" id="result-meta"></span>
-      </div>
-      <div class="col">
-        <div class="card">
-          <ul class="score-rows" id="score-rows"></ul>
-        </div>
-        <div class="card total-card">
-          <div class="total-label" data-i18n="totalScore"></div>
-          <div class="total-num num" id="total-num">0</div>
-          <div class="new-record" id="new-record" hidden data-i18n="newRecord"></div>
-          <div class="fade-block" id="achieve-block">
-            <div class="meter"><i id="achieve-meter"></i></div>
-            <div class="achieve num" id="achieve-text"></div>
-          </div>
-        </div>
+      <div class="result-card">
+        <div class="result-meta" id="result-meta"></div>
+        <h2 class="sr-only" id="result-h">RESULT</h2>
+        <div class="tier" id="tier"></div>
+        <div class="total-num num" id="total-num">0</div>
+        <div class="new-record" id="new-record" hidden data-i18n="newRecord"></div>
+        <div class="round-badges" id="round-badges"></div>
         <div class="skip-hint" id="skip-hint" data-i18n="tapToSkip"></div>
-      </div>
-      <div class="col col-right fade-block" id="result-extra">
-        <div class="stats">
-          <div class="card stat"><div class="k" data-i18n="accuracy"></div><div class="v num" id="st-acc"></div></div>
-          <div class="card stat"><div class="k" data-i18n="maxCombo"></div><div class="v num" id="st-combo"></div></div>
-          <div class="card stat wide"><div class="k" data-i18n="timing"></div><div class="v" id="st-tendency"></div></div>
-          <div class="card stat wide">
-            <div class="k" data-i18n="distribution"></div>
-            <div class="dist-bar" id="dist-bar"></div>
-            <div class="dist-legend num" id="dist-legend"></div>
-          </div>
-          <div class="card stat"><div class="k" data-i18n="bestScore"></div><div class="v num" id="st-best"></div></div>
-          <div class="card stat"><div class="k" data-i18n="maxPossible"></div><div class="v num" id="st-max"></div></div>
-          <div class="card stat wide" id="st-server-card" hidden><div class="v" id="st-server" style="font-size:15px"></div></div>
+        <div class="result-buttons" id="result-buttons">
+          <button class="btn btn-primary" type="button" id="btn-retry" data-i18n="retry"></button>
+          <button class="btn" type="button" id="btn-share" data-i18n="saveImage"></button>
         </div>
-        <img class="share-thumb" id="share-thumb" alt="">
-        <div class="result-buttons">
-          <button class="btn btn-primary" type="button" id="btn-retry">↻ <span data-i18n="retry"></span></button>
-          <button class="btn" type="button" id="btn-share">📸 <span data-i18n="saveShare"></span></button>
-          <button class="btn" type="button" id="btn-challenge">🔗 <span data-i18n="challengeLink"></span></button>
-          <button class="btn btn-ghost" type="button" id="btn-home" style="grid-column:1/-1">🏠 <span data-i18n="home"></span></button>
-        </div>
+        <button class="link-btn" type="button" id="btn-home" data-i18n="home"></button>
       </div>
     </div>
   </section>
@@ -768,10 +692,11 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
     <div class="modal-head"><h2 id="howto-h" data-i18n="howTo"></h2>
       <button class="icon-btn" type="button" data-close data-i18n-aria="close">✕</button></div>
     <ol class="how-list">
-      <li><span class="ic" style="background:var(--pad-7)">♩</span><span data-i18n="how1"></span></li>
-      <li><span class="ic" style="background:var(--surface)">◔</span><span data-i18n="how2"></span></li>
-      <li><span class="ic" style="background:var(--surface)"><span class="mini-grid"><b style="background:var(--pad-7)">7</b><b style="background:var(--pad-9)">9</b><b style="background:var(--pad-1)">1</b><b style="background:var(--pad-3)">3</b></span></span><span data-i18n="how3"></span></li>
-      <li><span class="ic" style="background:var(--surface)">⏸</span><span data-i18n="how4"></span></li>
+      <li><span class="ic" style="background:var(--pad-7)"><svg viewBox="-12 -12 24 24" width="30" height="30"><polygon points="0,-9 7.8,4.5 -7.8,4.5" fill="none" stroke="var(--pad-ink)" stroke-width="1.6"/><circle cx="0" cy="-9" r="2.6" fill="var(--pad-ink)"/></svg></span><span data-i18n="how1"></span></li>
+      <li><span class="ic" style="background:var(--pad-9)"><svg viewBox="-12 -12 24 24" width="30" height="30"><rect x="-8" y="-8" width="16" height="16" fill="none" stroke="var(--pad-ink)" stroke-width="1.6"/><circle cx="-8" cy="-8" r="2.4" fill="var(--pad-ink)"/><circle cx="8" cy="-8" r="2.4" fill="var(--pad-ink)"/><circle cx="8" cy="8" r="2.4" fill="var(--pad-ink)"/><circle cx="-8" cy="8" r="2.4" fill="var(--pad-ink)"/></svg></span><span data-i18n="how2"></span></li>
+      <li><span class="ic" style="background:var(--surface)">⏱</span><span data-i18n="how3"></span></li>
+      <li><span class="ic" style="background:var(--surface)"><span class="mini-grid"><b style="background:var(--pad-7)">Q</b><b style="background:var(--pad-9)">W</b><b style="background:var(--pad-1)">A</b><b style="background:var(--pad-3)">S</b></span></span><span data-i18n="how4"></span></li>
+      <li><span class="ic" style="background:var(--surface)">⏸</span><span data-i18n="how5"></span></li>
     </ol>
     <div class="modal-foot"><button class="btn btn-primary" type="button" data-close data-i18n="gotIt"></button></div>
   </div>
@@ -786,14 +711,6 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
     <div id="settings-main">
       <div class="set-group" data-i18n="gameplay"></div>
       <div class="set-list">
-        <div class="set-item col">
-          <div class="range-row"><span class="lab" data-i18n="difficulty"></span></div>
-          <div class="seg-ctl" id="set-level">
-            <button type="button" data-v="easy" data-i18n="easy"></button>
-            <button type="button" data-v="normal" data-i18n="normal"></button>
-            <button type="button" data-v="hard" data-i18n="hard"></button>
-          </div>
-        </div>
         <div class="set-item col">
           <div class="range-row"><span class="lab" data-i18n="bpm"></span><span style="flex:1"></span><output id="out-bpm" class="num"></output></div>
           <input type="range" id="set-bpm" min="60" max="140" step="5" data-i18n-aria="bpm">
@@ -852,40 +769,68 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
    ========================================================================= */
 const CONFIG = {
   TOTAL_ROUNDS: 8,
-  BEATS_PER_ROUND: 4,
+  BARS_PER_ROUND: 2,          // 같은 리듬을 2마디(8박) 반복
+  BEATS_PER_BAR: 4,
+  PREP_SECONDS: 3,            // 라운드 시작 전 쉬는 시간 (마지막 4박은 카운트)
   COUNT_IN_BEATS: 4,
-  GAP_BARS_BETWEEN_ROUNDS: 0,
   DEFAULT_BPM: 90,
-  LEVEL_DEFAULT_BPM: { easy: 75, normal: 90, hard: 90 },
   BPM_MIN: 60, BPM_MAX: 140,
   OFFSET_MAX_MS: 300,
-  PAD_IDS: [7, 9, 1, 3],
-  ACTIVE_PADS_BY_ROUND: [[7, 9], [7, 9], [7, 9, 1], [7, 9, 1], [7, 9, 1, 3], [7, 9, 1, 3], [7, 9, 1, 3], [7, 9, 1, 3]],
-  RANDOMIZE_ACTIVE_PADS: false,
+  MAX_VERTICES: 8,
+  /* 난이도별 화면 분할. 조각 = 화면 중심에서 뻗은 두 반직선 사이 (각도: 위=0°, 시계 방향)
+     keys: 이 조각을 누르는 키보드 위치(TL/TR/BL/BR = Q/W/A/S) */
+  LAYOUTS: {
+    easy: [
+      { a0: 180, a1: 360, color: 0, keys: ['TL', 'BL'] },
+      { a0: 0, a1: 180, color: 1, keys: ['TR', 'BR'] },
+    ],
+    normal: [
+      { a0: 240, a1: 360, color: 0, keys: ['TL'] },
+      { a0: 0, a1: 120, color: 1, keys: ['TR'] },
+      { a0: 120, a1: 240, color: 2, keys: ['BL', 'BR'] },
+    ],
+    hard: [
+      { a0: 270, a1: 360, color: 0, keys: ['TL'] },
+      { a0: 0, a1: 90, color: 1, keys: ['TR'] },
+      { a0: 180, a1: 270, color: 2, keys: ['BL'] },
+      { a0: 90, a1: 180, color: 3, keys: ['BR'] },
+    ],
+  },
+  /* 라운드별 도형(꼭짓점 수 = 한 마디에 치는 횟수) 후보. 패드 수만큼 서로 다른 값을 시드로 뽑는다.
+     1=점 2=선 3=삼각형 … 8=팔각형 */
+  SHAPE_POOLS: {
+    easy: [[1, 2], [1, 2, 4], [1, 2, 3], [2, 3, 4], [2, 3, 4], [3, 4, 6], [3, 4, 5, 6], [3, 4, 5, 6]],
+    normal: [[1, 2, 4], [1, 2, 3, 4], [1, 2, 3, 4], [2, 3, 4, 6], [2, 3, 4, 5, 6], [3, 4, 5, 6], [3, 4, 5, 6, 7], [3, 4, 5, 6, 7, 8]],
+    hard: [[1, 2, 4, 8], [1, 2, 3, 4, 6], [2, 3, 4, 6, 8], [2, 3, 4, 5, 6, 8], [3, 4, 5, 6, 8], [3, 4, 5, 6, 7, 8], [3, 4, 5, 6, 7, 8], [4, 5, 6, 7, 8]],
+  },
   WINDOWS_MS: { perfect: 45, great: 90, good: 140 },
   START_DELAY_S: 0.1,
   SCHED_INTERVAL_MS: 25,
   SCHED_LOOKAHEAD_S: 0.1,
   CHATTER_MS: 30,
   PULSE_S: 0.15,
-  COMBO_CALLOUTS: [5, 10, 20],
+  COMBO_CALLOUTS: [5, 10, 20, 50, 100],
   SCORING: {
     hit: { perfect: 1000, great: 500, good: 200, miss: 0 },
     wrongHit: -300,
-    roundBonus: { 0: 2000, 1: 1000, 2: 400, else: 0 },
-    roundWeight: [1, 1, 1.5, 1.5, 2, 2, 2, 2],
+    // 라운드 등급: 모두 PERFECT·헛치기 0 = PERFECT, 그 외 라운드 정확도(헛치기는 0점 노트로 계산) 기준
+    roundGrade: { great: 0.90, good: 0.75 },
+    roundBonus: { PERFECT: 2000, GREAT: 1000, GOOD: 400, BREAK: 0 },
+    roundWeight: [1, 1, 1.5, 1.5, 2, 2, 2.5, 2.5],
     perfectCombo: [
       { min: 2, max: 4, step: 100 },          // 100 × (n − 1)
       { min: 5, max: 9, perHit: 500 },
       { min: 10, max: 19, perHit: 800 },
       { min: 20, max: Infinity, perHit: 1000 },
     ],
-    milestone: { 10: 2000, 20: 5000 },
+    milestone: { 10: 2000, 20: 5000, 50: 10000 },
     fullPerfect: 20000, noMiss: 3000,
     levelMul: { easy: 0.8, normal: 1.0, hard: 1.3 },
     bpmMul: { base: 90, min: 0.7, max: 1.5 },
   },
 };
+/* 키보드는 Q·W·A·S 만 (화면 위치 그대로) */
+const KEY_POS = { KeyQ: 'TL', KeyW: 'TR', KeyA: 'BL', KeyS: 'BR' };
 const LEVELS = ['easy', 'normal', 'hard'];
 const W = { perfect: CONFIG.WINDOWS_MS.perfect / 1000, great: CONFIG.WINDOWS_MS.great / 1000, good: CONFIG.WINDOWS_MS.good / 1000 };
 const reducedMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -920,92 +865,43 @@ function randomSeed() {
 }
 
 /* =========================================================================
-   3. PatternGenerator — 라운드별 패턴 생성
+   3. PatternGenerator — 라운드별 폴리리듬 (패드마다 도형 하나)
+   도형의 꼭짓점 수 N = 한 마디(4박) 동안 균등 간격으로 치는 횟수. 꼭짓점 k 는 k × 4/N 박.
    ========================================================================= */
 const PatternGenerator = {
   generate(seed, level) {
     const rng = makeRng(seed);
-    const sets = this.activeSets(rng);
+    const padCount = CONFIG.LAYOUTS[level].length;
+    const pools = CONFIG.SHAPE_POOLS[level];
+    const beatsPerBar = CONFIG.BEATS_PER_BAR;
     const rounds = [];
     let prevKey = null;
     for (let r = 0; r < CONFIG.TOTAL_ROUNDS; r++) {
-      const pads = sets[r];
-      const newPads = r > 0 ? pads.filter(p => !sets[r - 1].includes(p)) : [];
-      const eighths = level === 'hard' && r >= 4;
-      let notes = null, key = null;
-      for (let attempt = 0; attempt < 800 && !notes; attempt++) {
-        const cand = this.tryRound(rng, r, pads, level);
-        if (!cand) continue;
-        const k = this.keyOf(cand);
-        if (k === prevKey) continue;
-        notes = cand; key = k;
+      let shapes = null;
+      for (let attempt = 0; attempt < 50 && !shapes; attempt++) {
+        const cand = rng.shuffle(pools[r]).slice(0, padCount);
+        if (this.keyOf(cand) !== prevKey) shapes = cand;   // 직전 라운드와 같은 조합 금지
       }
-      if (!notes) { notes = this.fallback(r, pads, prevKey); key = this.keyOf(notes); }
-      prevKey = key;
-      rounds.push({ index: r, pads, newPads, subdiv: eighths ? 8 : 4, notes });
+      if (!shapes) shapes = pools[r].slice(-padCount);
+      prevKey = this.keyOf(shapes);
+      const notes = [];
+      for (let bar = 0; bar < CONFIG.BARS_PER_ROUND; bar++) {
+        shapes.forEach((n, pad) => {
+          for (let k = 0; k < n; k++) notes.push({ pad, vertex: k, bar, beatPos: bar * beatsPerBar + k * beatsPerBar / n });
+        });
+      }
+      notes.sort((a, b) => a.beatPos - b.beatPos || a.pad - b.pad);
+      rounds.push({ index: r, shapes, notes });
     }
     return rounds;
   },
-  activeSets(rng) {
-    const base = CONFIG.ACTIVE_PADS_BY_ROUND;
-    if (!CONFIG.RANDOMIZE_ACTIVE_PADS) return base.map(s => s.slice());
-    const order = rng.shuffle(CONFIG.PAD_IDS);
-    return base.map(s => order.slice(0, s.length));
-  },
-  keyOf(notes) { return notes.map(n => n.beatPos + ':' + n.padId).join(','); },
-  hasTriple(notes) {
-    const seq = notes.filter(n => !n.chord).sort((a, b) => a.beatPos - b.beatPos).map(n => n.padId);
-    for (let i = 2; i < seq.length; i++) if (seq[i] === seq[i - 1] && seq[i] === seq[i - 2]) return true;
-    return false;
-  },
-  tryRound(rng, r, pads, level) {
-    const allowRest = level !== 'easy';
-    const seq = [];
-    let rests = 0;
-    for (let s = 0; s < 4; s++) {
-      if (allowRest && s > 0 && rests < 1 && rng.chance(0.22)) { seq.push(null); rests++; continue; }
-      seq.push(rng.pick(pads));
-    }
-    if (!pads.every(p => seq.includes(p))) return null;       // 활성 패드 모두 1회 이상
-    const notes = [];
-    seq.forEach((p, i) => { if (p != null) notes.push({ beatPos: i, padId: p, eighth: false, chord: false }); });
-    if (level === 'hard' && r >= 4) {
-      // 8분음표 쌍: R5~6 최대 1쌍, R7~8 최대 2쌍
-      const maxPairs = r >= 6 ? 2 : 1;
-      const pairs = r >= 6 ? 1 + rng.int(maxPairs) : 1;
-      const cands = rng.shuffle(notes.map(n => n.beatPos));
-      for (let k = 0; k < pairs && k < cands.length; k++) {
-        const b = cands[k];
-        const first = notes.find(n => n.beatPos === b);
-        first.eighth = true;
-        notes.push({ beatPos: b + 0.5, padId: rng.pick(pads), eighth: true, chord: false });
-      }
-      if (r === 7) {
-        // R8만 동시타 1회
-        const quarter = notes.filter(n => Number.isInteger(n.beatPos));
-        const host = rng.pick(quarter);
-        const others = pads.filter(p => p !== host.padId);
-        host.chord = false;
-        notes.push({ beatPos: host.beatPos, padId: rng.pick(others), eighth: host.eighth, chord: true });
-      }
-    }
-    if (this.hasTriple(notes)) return null;
-    notes.sort((a, b) => a.beatPos - b.beatPos || CONFIG.PAD_IDS.indexOf(a.padId) - CONFIG.PAD_IDS.indexOf(b.padId));
-    return notes;
-  },
-  fallback(r, pads, prevKey) {
-    for (let shift = 0; shift < pads.length; shift++) {
-      const notes = [0, 1, 2, 3].map(i => ({ beatPos: i, padId: pads[(i + shift) % pads.length], eighth: false, chord: false }));
-      if (this.keyOf(notes) !== prevKey) return notes;
-    }
-    return [0, 1, 2, 3].map(i => ({ beatPos: i, padId: pads[i % pads.length], eighth: false, chord: false }));
-  },
+  keyOf(shapes) { return shapes.slice().sort((a, b) => a - b).join(','); },
 };
 
 /* =========================================================================
    4. AudioEngine — 둥 소리·틱·효과음 (Web Audio 합성, 외부 파일 없음)
    ========================================================================= */
-const DRUM_VOICES = { 7: [520, 260, 0.18], 9: [400, 200, 0.20], 1: [300, 150, 0.23], 3: [220, 110, 0.26] };
+const DRUM_VOICES = [[520, 260, 0.18], [400, 200, 0.20], [300, 150, 0.23], [220, 110, 0.26]];   // 패드 색 순서
 const AudioEngine = {
   supported: !!(window.AudioContext || window.webkitAudioContext),
   ctx: null, master: null, comp: null, noise: null,
@@ -1282,6 +1178,58 @@ const I18N = {
     gameplay: 'ゲーム', sound: 'サウンド', display: '表示', maxComboN: '最大パーフェクトコンボ {n}',
   },
 };
+/* 폴리리듬 모드 문구 (위 기본 사전을 덮어씀) */
+const TIER_NAMES = {
+  ko: { BRONZE: '브론즈', SILVER: '실버', GOLD: '골드', PLATINUM: '플래티넘', DIAMOND: '다이아', CHALLENGER: '챌린저' },
+  en: { BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold', PLATINUM: 'Platinum', DIAMOND: 'Diamond', CHALLENGER: 'Challenger' },
+  zh: { BRONZE: '青铜', SILVER: '白银', GOLD: '黄金', PLATINUM: '铂金', DIAMOND: '钻石', CHALLENGER: '挑战者' },
+  ja: { BRONZE: 'ブロンズ', SILVER: 'シルバー', GOLD: 'ゴールド', PLATINUM: 'プラチナ', DIAMOND: 'ダイヤ', CHALLENGER: 'チャレンジャー' },
+};
+Object.keys(TIER_NAMES).forEach(l => Object.keys(TIER_NAMES[l]).forEach(k => { I18N[l]['tier' + k] = TIER_NAMES[l][k]; }));
+Object.assign(I18N.ko, { saveImage: '이미지 저장' });
+Object.assign(I18N.en, { saveImage: 'Save Image' });
+Object.assign(I18N.zh, { saveImage: '保存图片' });
+Object.assign(I18N.ja, { saveImage: '画像を保存' });
+Object.assign(I18N.ko, {
+  tagline: '도형의 꼭짓점마다 톡! 폴리리듬 챌린지',
+  pcHint: 'PC: Q · W · A · S 키로 플레이 (동시에 여러 개 OK)',
+  how1: '공이 도형 둘레를 돌아요. 꼭짓점에 닿는 순간 그 패드를 눌러요!',
+  how2: '모든 도형은 한 마디(4박)에 한 바퀴 — ●는 1번, ━는 2번, △는 3번, □는 4번. 서로 엇갈리는 박자가 폴리리듬이에요',
+  how3: '라운드 시작 전 3초 동안 도형을 확인하고, 4·3·2·1 카운트에 맞춰 시작! 같은 리듬을 2마디 반복해요',
+  how4: 'PC는 Q · W · A · S — 패드 위치 그대로 (여러 개 동시에 눌러도 돼요)',
+  how5: '가운데 동그라미를 누르면 일시정지해요',
+  easyDesc: '패드 2개', normalDesc: '패드 3개', hardDesc: '패드 4개', challengeStart: '도전하기',
+});
+Object.assign(I18N.en, {
+  tagline: 'Tap every corner! A polyrhythm challenge',
+  pcHint: 'PC: Play with Q · W · A · S (press several at once)',
+  how1: 'A ball travels around each shape. Tap that pad the moment it hits a corner!',
+  how2: 'Every shape takes one bar (4 beats) per lap — ● 1 hit, ━ 2, △ 3, □ 4. Shapes crossing each other = polyrhythm',
+  how3: 'Before each round you get 3 seconds to read the shapes, then go on the 4·3·2·1 count. Same rhythm for 2 bars!',
+  how4: 'On PC, Q · W · A · S — same layout as the pads (press several at once)',
+  how5: 'Tap the center circle to pause',
+  easyDesc: '2 pads', normalDesc: '3 pads', hardDesc: '4 pads', challengeStart: 'Play',
+});
+Object.assign(I18N.zh, {
+  tagline: '在图形的每个顶点点击！多节奏挑战',
+  pcHint: '电脑：使用 Q · W · A · S 键（可同时按多个）',
+  how1: '小球沿着图形移动，碰到顶点的瞬间点击该鼓垫！',
+  how2: '每个图形一小节（4拍）转一圈 — ● 1 次，━ 2 次，△ 3 次，□ 4 次。不同图形交错就是多节奏',
+  how3: '每回合开始前有 3 秒查看图形，跟着 4·3·2·1 开始！同样的节奏重复 2 小节',
+  how4: '电脑用 Q · W · A · S — 与鼓垫位置一致（可同时按多个）',
+  how5: '点击中间的圆圈暂停',
+  easyDesc: '2 个鼓垫', normalDesc: '3 个鼓垫', hardDesc: '4 个鼓垫', challengeStart: '挑战',
+});
+Object.assign(I18N.ja, {
+  tagline: '図形の角ごとにタップ！ポリリズムチャレンジ',
+  pcHint: 'PC：Q・W・A・S キーでプレイ（同時押しOK）',
+  how1: 'ボールが図形のふちを回るよ。角に当たった瞬間にそのパッドをタップ！',
+  how2: 'どの図形も1小節（4拍）で1周 — ●は1回、━は2回、△は3回、□は4回。ずれて重なるリズムがポリリズム',
+  how3: 'ラウンド開始前の3秒で図形を確認、4・3・2・1のカウントでスタート！同じリズムを2小節くり返すよ',
+  how4: 'PCは Q・W・A・S — パッドと同じ配置（同時押しOK）',
+  how5: '真ん中の丸をタップで一時停止',
+  easyDesc: 'パッド2つ', normalDesc: 'パッド3つ', hardDesc: 'パッド4つ', challengeStart: '挑戦する',
+});
 const LANGS = [['ko', '한국어'], ['en', 'English'], ['zh', '简体中文'], ['ja', '日本語']];
 const I18n = {
   lang: 'ko', urlLang: null, _nf: null,
@@ -1336,7 +1284,6 @@ const I18n = {
     $$('[data-i18n-aria]', root).forEach(el => { el.setAttribute('aria-label', this.t(el.dataset.i18nAria)); });
     document.title = this.t('title');
     $$('.lang-select').forEach(sel => { sel.value = this.lang; });
-    $$('.pad').forEach(p => p.setAttribute('aria-label', this.t('padLabel', { n: p.dataset.pad })));
     App.onLanguageChanged && App.onLanguageChanged();
   },
 };
@@ -1386,6 +1333,7 @@ class ScoreKeeper {
     this.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
     this.wrongHits = 0;
     this.roundWrong = new Array(CONFIG.TOTAL_ROUNDS).fill(0);
+    this.roundWrongHits = new Array(CONFIG.TOTAL_ROUNDS).fill(0);
     this.roundGrades = new Array(CONFIG.TOTAL_ROUNDS).fill(null);
     this.roundBonuses = new Array(CONFIG.TOTAL_ROUNDS).fill(0);
     this.roundAcc = Array.from({ length: CONFIG.TOTAL_ROUNDS }, () => ({ pts: 0, n: 0 }));
@@ -1430,13 +1378,14 @@ class ScoreKeeper {
       this.wrongHits++;
       this.penalty += -S.wrongHit; fx.points = S.wrongHit;
       this.perfectCombo = 0;
-      if (ev.round >= 0 && ev.round < CONFIG.TOTAL_ROUNDS) this.roundWrong[ev.round]++;
+      if (ev.round >= 0 && ev.round < CONFIG.TOTAL_ROUNDS) { this.roundWrong[ev.round]++; this.roundWrongHits[ev.round]++; }
     } else if (ev.type === 'roundEnd') {
       const w = this.roundWrong[ev.round];
-      const base = S.roundBonus[w] != null ? S.roundBonus[w] : S.roundBonus.else;
-      const bonus = Math.round(base * S.roundWeight[ev.round]);
+      const ra = this.roundAcc[ev.round];
+      const acc = ra.pts / (Math.max(1, ra.n + this.roundWrongHits[ev.round]) * 100);
+      const grade = w === 0 ? 'PERFECT' : acc >= S.roundGrade.great ? 'GREAT' : acc >= S.roundGrade.good ? 'GOOD' : 'BREAK';
+      const bonus = Math.round(S.roundBonus[grade] * S.roundWeight[ev.round]);
       this.round += bonus; this.roundBonuses[ev.round] = bonus;
-      const grade = w === 0 ? 'PERFECT' : w === 1 ? 'GREAT' : w === 2 ? 'GOOD' : 'BREAK';
       this.roundGrades[ev.round] = grade;
       fx.grade = grade; fx.bonus = bonus;
     } else if (ev.type === 'final') {
@@ -1471,7 +1420,7 @@ class ScoreKeeper {
     rounds.forEach(r => {
       r.notes.forEach(() => k.record({ type: 'hit', round: r.index, result: 'perfect', deltaMs: 0 }));
       total += r.notes.length;
-      k.record({ type: 'roundEnd', round: r.index });
+      k.record({ type: 'roundEnd', round: r.index, notes: r.notes.length });
     });
     k.record({ type: 'final', totalNotes: total });
     return k.total();
@@ -1480,33 +1429,36 @@ class ScoreKeeper {
 
 /* =========================================================================
    App-level Game (타임라인·스케줄러·판정 연결)
+   라운드 r = [준비 prepDur 초 (마지막 4박 카운트)] + [2마디 = 8박 연주]
    ========================================================================= */
 class Game {
   constructor({ seed, bpm, level }) {
     this.seed = seed; this.bpm = bpm; this.level = level;
+    this.layout = CONFIG.LAYOUTS[level];
     this.beatDur = 60 / bpm;
-    this.span = CONFIG.BEATS_PER_ROUND * (1 + CONFIG.GAP_BARS_BETWEEN_ROUNDS);
+    this.barBeats = CONFIG.BEATS_PER_BAR;
+    this.roundBeats = CONFIG.BEATS_PER_BAR * CONFIG.BARS_PER_ROUND;
+    this.prepDur = Math.max(CONFIG.PREP_SECONDS, CONFIG.COUNT_IN_BEATS * this.beatDur);
+    this.segDur = this.prepDur + this.roundBeats * this.beatDur;
     this.rounds = PatternGenerator.generate(seed, level);
     this.notes = [];
     let id = 0;
     this.rounds.forEach(r => r.notes.forEach(n => {
-      this.notes.push({ id: id++, round: r.index, beatPos: n.beatPos, padId: n.padId, eighth: n.eighth, chord: n.chord,
+      this.notes.push({ id: id++, round: r.index, pad: n.pad, vertex: n.vertex, bar: n.bar, beatPos: n.beatPos,
         time: 0, judged: false, result: null, deltaMs: null });
     }));
     this.roundNotes = this.rounds.map(r => this.notes.filter(n => n.round === r.index));
-    this.padNotes = {};
-    CONFIG.PAD_IDS.forEach(p => { this.padNotes[p] = this.notes.filter(n => n.padId === p); });
+    this.padNotes = this.layout.map((_, i) => this.notes.filter(n => n.pad === i));
     this.score = new ScoreKeeper(level, bpm);
     this.maxPossible = ScoreKeeper.simulateMax(this.rounds, level, bpm);
     this.state = 'idle';
-    this.version = 0;          // 판정이 바뀔 때마다 증가 → 도트 다시 그리기
+    this.version = 0;
     this.finished = false;
     this.schedTimer = null;
   }
   get offset() { return Settings.data.offsetMs / 1000; }
-  roundStart(r) { return this.origin + (CONFIG.COUNT_IN_BEATS + (r - this.firstRound) * this.span) * this.beatDur; }
-  roundEnd(r) { return this.roundStart(r) + CONFIG.BEATS_PER_ROUND * this.beatDur; }
-  totalBeats() { return CONFIG.COUNT_IN_BEATS + (CONFIG.TOTAL_ROUNDS - this.firstRound) * this.span - CONFIG.GAP_BARS_BETWEEN_ROUNDS * CONFIG.BEATS_PER_ROUND; }
+  roundStart(r) { return this.origin + (r - this.firstRound) * this.segDur + this.prepDur; }
+  roundEnd(r) { return this.roundStart(r) + this.roundBeats * this.beatDur; }
 
   begin(fromRound) {
     this.firstRound = fromRound;
@@ -1518,7 +1470,14 @@ class Game {
         n.judged = false; n.result = null; n.deltaMs = null;
       }
     });
-    this.nextBeat = 0;
+    // 메트로놈 틱 목록: 준비 시간 마지막 4박(카운트, 항상) + 연주 8박(설정)
+    this.ticks = [];
+    for (let r = fromRound; r < CONFIG.TOTAL_ROUNDS; r++) {
+      const rs = this.roundStart(r);
+      for (let k = CONFIG.COUNT_IN_BEATS; k >= 1; k--) this.ticks.push({ time: rs - k * this.beatDur, accent: k === CONFIG.COUNT_IN_BEATS, countIn: true });
+      for (let j = 0; j < this.roundBeats; j++) this.ticks.push({ time: rs + j * this.beatDur, accent: j % this.barBeats === 0, countIn: false });
+    }
+    this.tickIdx = 0;
     this.state = 'countIn';
     this.finished = false;
     this.version++;
@@ -1527,16 +1486,20 @@ class Game {
 
   /** 시각 t(초)에서의 위치 */
   position(t) {
-    const CI = CONFIG.COUNT_IN_BEATS;
-    const b = (t - this.origin) / this.beatDur;
-    if (b < CI) return { phase: 'countIn', round: this.firstRound, beat: Math.max(0, b), abs: b };
-    const rb = b - CI;
-    const ri = Math.floor(rb / this.span);
-    const inR = rb - ri * this.span;
-    const round = this.firstRound + ri;
-    if (round >= CONFIG.TOTAL_ROUNDS) return { phase: 'end', round: CONFIG.TOTAL_ROUNDS - 1, beat: 3.999, abs: b };
-    if (inR >= CONFIG.BEATS_PER_ROUND) return { phase: 'gap', round, beat: (inR - CONFIG.BEATS_PER_ROUND) % 4, abs: b };
-    return { phase: 'round', round, beat: inR, abs: b };
+    const rel = t - this.origin;
+    const seg = Math.max(0, Math.floor(rel / this.segDur));
+    const round = this.firstRound + seg;
+    if (round >= CONFIG.TOTAL_ROUNDS) {
+      return { phase: 'end', round: CONFIG.TOTAL_ROUNDS - 1, beat: this.roundBeats - 0.001, bar: CONFIG.BARS_PER_ROUND - 1, barFrac: 0.9999, beatsLeft: 0 };
+    }
+    const inSeg = rel - seg * this.segDur;
+    if (inSeg < this.prepDur) {
+      const beatsLeft = (this.prepDur - inSeg) / this.beatDur;
+      return { phase: 'prep', round, beatsLeft, beat: -beatsLeft, bar: 0, barFrac: 0 };
+    }
+    const beat = (inSeg - this.prepDur) / this.beatDur;
+    const bar = Math.min(CONFIG.BARS_PER_ROUND - 1, Math.floor(beat / this.barBeats));
+    return { phase: 'round', round, beat, bar, barFrac: (beat - bar * this.barBeats) / this.barBeats, beatsLeft: 0 };
   }
 
   /* ---------- 메트로놈 lookahead 스케줄러 ---------- */
@@ -1551,31 +1514,18 @@ class Game {
     const ctx = AudioEngine.ctx;
     if (!ctx || !AudioEngine.useCtx) return;
     const horizon = ctx.currentTime + CONFIG.SCHED_LOOKAHEAD_S;
-    const total = this.totalBeats();
-    const CI = CONFIG.COUNT_IN_BEATS;
-    while (this.nextBeat < total) {
-      const bt = this.origin + this.nextBeat * this.beatDur;
-      if (bt > horizon) break;
-      if (bt >= ctx.currentTime - 0.02) {
-        const isCI = this.nextBeat < CI;
-        const rb = this.nextBeat - CI;
-        const inBar = isCI ? this.nextBeat : (rb % this.span) % 4;
-        if (isCI || Settings.data.metronome) AudioEngine.tick(bt, inBar === 0, isCI);
-        if (!isCI && rb % this.span === 0) {
-          const r = this.firstRound + rb / this.span;
-          if (this.rounds[r] && this.rounds[r].newPads.length) AudioEngine.pop(bt);
-        }
-      }
-      this.nextBeat++;
+    while (this.tickIdx < this.ticks.length && this.ticks[this.tickIdx].time <= horizon) {
+      const tk = this.ticks[this.tickIdx++];
+      if (tk.time >= ctx.currentTime - 0.02 && (tk.countIn || Settings.data.metronome)) AudioEngine.tick(tk.time, tk.accent, tk.countIn);
     }
   }
 
   /* ---------- 판정 ---------- */
-  onPad(padId, perfMs) {
+  onPad(pad, perfMs) {
     if (this.state !== 'countIn' && this.state !== 'playing') return null;
     const tIn = AudioEngine.audible(perfMs) - this.offset;
     let best = null, bestD = 0;
-    for (const n of this.padNotes[padId]) {
+    for (const n of this.padNotes[pad]) {
       if (n.judged || n.round < this.firstRound) continue;
       const d = tIn - n.time;
       if (Math.abs(d) <= W.good && (!best || Math.abs(d) < Math.abs(bestD))) { best = n; bestD = d; }
@@ -1586,14 +1536,14 @@ class Game {
       this.judge(best, result, Math.round(bestD * 1000));
       return result;
     }
-    // 헛치기: 판정 윈도우 안에 이 패드의 노트가 없음 (비활성 패드·카운트인 제외)
+    // 헛치기: 연주 중인데 이 패드의 판정 윈도우 안에 노트가 없음 (준비 시간의 연습 탭은 제외)
     const pos = this.position(tIn);
     if (pos.phase !== 'round') return null;
     let r = pos.round;
-    if (r < this.nextFinalize) r = this.nextFinalize;   // 이미 정산된 라운드면 다음 라운드로
-    if (r >= CONFIG.TOTAL_ROUNDS || !this.rounds[r].pads.includes(padId)) return null;
+    if (r < this.nextFinalize) r = this.nextFinalize;
+    if (r >= CONFIG.TOTAL_ROUNDS) return null;
     this.score.record({ type: 'wrong', round: r });
-    Renderer.onWrong(padId, CONFIG.SCORING.wrongHit);
+    Renderer.onWrong(pad, CONFIG.SCORING.wrongHit);
     return 'wrong';
   }
   judge(n, result, deltaMs) {
@@ -1607,15 +1557,14 @@ class Game {
   update(now) {
     if (this.state !== 'countIn' && this.state !== 'playing') return;
     const tv = now - this.offset;
-    const pos = this.position(tv);
-    if (this.state === 'countIn' && pos.phase !== 'countIn') this.state = 'playing';
+    if (this.state === 'countIn' && this.position(tv).phase === 'round') this.state = 'playing';
     for (const n of this.notes) {
       if (!n.judged && n.round >= this.firstRound && tv - n.time > W.good) this.judge(n, 'miss', null);
     }
     while (this.nextFinalize < CONFIG.TOTAL_ROUNDS) {
       const r = this.nextFinalize;
       if (tv >= this.roundEnd(r) && this.roundNotes[r].every(n => n.judged)) {
-        const fx = this.score.record({ type: 'roundEnd', round: r });
+        const fx = this.score.record({ type: 'roundEnd', round: r, notes: this.roundNotes[r].length });
         this.nextFinalize++;
         Renderer.onRoundEnd(r, fx);
       } else break;
@@ -1641,7 +1590,7 @@ class Game {
     this.pausedRound = Math.min(this.nextFinalize, CONFIG.TOTAL_ROUNDS - 1);
     return true;
   }
-  /** 재개: 카운트인 1마디 후 현재 라운드 처음부터 (해당 라운드 점수 롤백) */
+  /** 재개: 현재 라운드를 준비 시간부터 다시 (해당 라운드 점수 롤백) */
   resume() {
     const r = this.pausedRound;
     this.score.rollbackTo(r);
@@ -1658,6 +1607,7 @@ class Game {
         multiplier: s.mul, levelMul: s.levelMul, bpmMul: s.bpmMul },
       specials: s.specials.slice(),
       roundGrades: s.roundGrades.map(g => g || 'BREAK'),
+      roundShapes: this.rounds.map(r => r.shapes.slice()),
       accuracy: s.accuracy(this.notes.length),
       maxPerfectCombo: s.maxPerfectCombo,
       counts: Object.assign({}, s.counts), wrongHits: s.wrongHits,
@@ -1671,31 +1621,64 @@ class Game {
 }
 
 /* =========================================================================
-   7. Renderer — rAF 루프, 허브(박자 링), 패드 애니메이션
+   7. Renderer — rAF 루프, 화면 분할(clip-path), 도형·공·꼭짓점 두근, 중앙 허브
    ========================================================================= */
+const KEY_LABEL = { TL: 'Q', TR: 'W', BL: 'A', BR: 'S' };
+/** 화면 중심에서 a0°→a1°(위=0°, 시계 방향) 사이 조각의 다각형 꼭짓점 */
+function slicePolygon(cx, cy, w, h, a0, a1) {
+  const exit = a => {
+    const rad = a * Math.PI / 180, dx = Math.sin(rad), dy = -Math.cos(rad);
+    let t = Infinity;
+    if (dx > 1e-9) t = Math.min(t, (w - cx) / dx);
+    if (dx < -1e-9) t = Math.min(t, -cx / dx);
+    if (dy > 1e-9) t = Math.min(t, (h - cy) / dy);
+    if (dy < -1e-9) t = Math.min(t, -cy / dy);
+    return [cx + dx * t, cy + dy * t];
+  };
+  const angOf = (x, y) => (Math.atan2(x - cx, -(y - cy)) * 180 / Math.PI + 360) % 360;
+  const span = a1 - a0;
+  const corners = [[0, 0], [w, 0], [w, h], [0, h]]
+    .map(c => ({ c, rel: (angOf(c[0], c[1]) - a0 + 360) % 360 }))
+    .filter(o => o.rel > 1e-6 && o.rel < span - 1e-6)
+    .sort((a, b) => a.rel - b.rel).map(o => o.c);
+  return { poly: [[cx, cy], exit(a0), ...corners, exit(a1 % 360)], exit };
+}
+function segDist(px, py, [x1, y1], [x2, y2]) {
+  const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
+  const u = L ? clamp(((px - x1) * dx + (py - y1) * dy) / L, 0, 1) : 0;
+  return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy));
+}
+function pointInPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+/** 도형 꼭짓점 좌표 (viewBox -60..60). 0번 = 마디 첫 박 */
+function shapeVertices(n, R) {
+  if (n === 1) return [[0, -R]];
+  if (n === 2) return [[-R, 0], [R, 0]];
+  return Array.from({ length: n }, (_, k) => [R * Math.sin(2 * Math.PI * k / n), -R * Math.cos(2 * Math.PI * k / n)]);
+}
+/** 마디 진행률 f(0..1)에서 공의 위치 */
+function ballAt(n, verts, f, R) {
+  if (n === 1) { const a = 2 * Math.PI * f; return [R * Math.sin(a), -R * Math.cos(a)]; }
+  if (n === 2) {
+    const u = f < 0.5 ? f * 2 : (f - 0.5) * 2;
+    const [a, b] = f < 0.5 ? [verts[0], verts[1]] : [verts[1], verts[0]];
+    return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+  }
+  const x = f * n, k = Math.min(n - 1, Math.floor(x)), u = x - k;
+  const a = verts[k], b = verts[(k + 1) % n];
+  return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+}
+
 const Renderer = {
-  pads: {},
+  pads: [],
+  R: 46,
   build() {
-    const wrap = $('#pads');
-    wrap.innerHTML = '';
-    CONFIG.PAD_IDS.forEach(id => {
-      const el = document.createElement('div');
-      el.className = 'pad';
-      el.dataset.pad = id;
-      el.setAttribute('role', 'button');
-      el.innerHTML =
-        '<div class="pad-body">' +
-        '<div class="pad-face"><span class="pad-key">' + id + '</span><span class="pad-new en">NEW!</span>' +
-        '<div class="note" aria-hidden="true"><div class="note-halo"></div><div class="note-ring"></div><span class="pad-icon">♩</span></div>' +
-        '<div class="pad-beats"><div class="pad-dots cur"></div><div class="pad-next"><span class="next-label">NEXT</span><div class="pad-dots nx"></div></div></div>' +
-        '<div class="pad-flash"></div><div class="pad-press"></div></div></div>';
-      wrap.appendChild(el);
-      this.pads[id] = {
-        el, body: $('.pad-body', el), note: $('.note', el), halo: $('.note-halo', el), ring: $('.note-ring', el), face: $('.pad-face', el),
-        icon: $('.pad-icon', el), dots: $('.pad-dots.cur', el), nextDots: $('.pad-dots.nx', el), flash: $('.pad-flash', el),
-        cache: {}, pressTimer: 0, pressedAt: 0,
-      };
-    });
     // 허브 SVG: 4박 세그먼트 + 라운드 진행 링 + 재생헤드
     const svg = $('#hub-svg');
     const R = 44, arc = (a0, a1, r) => {
@@ -1713,16 +1696,113 @@ const Renderer = {
     this.progLen = 2 * Math.PI * 36;
     this.hubScore = $('#hub-score'); this.hubRound = $('#hub-round'); this.hubCount = $('#hub-count');
     this.float = $('#float-layer'); this.comboChip = $('#combo-chip');
+    const relayout = () => this.layoutPads();
+    if (window.ResizeObserver) new ResizeObserver(relayout).observe($('.stage'));
+    window.addEventListener('resize', relayout);
+    window.addEventListener('orientationchange', () => setTimeout(relayout, 250));
+  },
+  buildPads(game) {
+    const wrap = $('#pads');
+    wrap.innerHTML = '';
+    this.pads = game.layout.map((def, i) => {
+      const el = document.createElement('div');
+      el.className = 'pad';
+      el.dataset.pad = i; el.dataset.color = def.color;
+      el.setAttribute('role', 'button');
+      const keyLabel = def.keys.map(k => KEY_LABEL[k]).join('·');
+      el.setAttribute('aria-label', t('padLabel', { n: keyLabel }));
+      el.innerHTML = '<div class="pad-flash"></div><div class="pad-press"></div>' +
+        '<div class="shape-box"><svg viewBox="-60 -60 120 120" aria-hidden="true"></svg>' +
+        '<div class="shape-meta"><span class="shape-count"></span><span class="pad-key"></span></div></div>';
+      $('.pad-key', el).textContent = keyLabel;
+      wrap.appendChild(el);
+      return { el, def, box: $('.shape-box', el), svg: $('svg', el), count: $('.shape-count', el),
+        n: 0, vpos: [], verts: [], halos: [], ball: null, cache: {}, vcache: [], vtimers: [], pressTimer: 0, pressedAt: 0 };
+    });
+    this.layoutPads();
+  },
+  safeInsets() {
+    if (!this._probe) {
+      const p = document.createElement('div');
+      p.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;top:0;left:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+      document.body.appendChild(p); this._probe = p;
+    }
+    const cs = getComputedStyle(this._probe);
+    return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+  },
+  /** 화면 크기에 맞춰 조각(clip-path)·구분선·도형 위치/크기를 다시 계산 */
+  layoutPads() {
+    const stage = $('.stage');
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h || !this.pads.length) return;
+    const cx = w / 2, cy = h / 2;
+    const hubR = ($('#hub').offsetWidth || 100) / 2 + 12;
+    const safe = this.safeInsets();
+    const metaH = 30;   // 도형 아래 라벨 공간
+    const dividers = new Set();
+    const fits = this.pads.map(p => {
+      const { poly, exit } = slicePolygon(cx, cy, w, h, p.def.a0, p.def.a1);
+      dividers.add(p.def.a0 % 360); dividers.add(p.def.a1 % 360);
+      p.el.style.setProperty('--clip', 'polygon(' + poly.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(',') + ')');
+      // 조각 안에서 가장 큰 원이 들어가는 점(허브·안전 영역 제외)을 격자 탐색
+      const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
+      const bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys);
+      const steps = 36;
+      let best = { x: (bx0 + bx1) / 2, y: (by0 + by1) / 2, r: 0 };
+      for (let i = 1; i < steps; i++) for (let j = 1; j < steps; j++) {
+        const x = bx0 + (bx1 - bx0) * i / steps, y = by0 + (by1 - by0) * j / steps;
+        if (!pointInPoly(x, y, poly)) continue;
+        let d = Math.min(x - safe.l, w - safe.r - x, y - safe.t, h - safe.b - y - metaH, Math.hypot(x - cx, y - cy) - hubR);
+        for (let k = 0; k < poly.length; k++) d = Math.min(d, segDist(x, y, poly[k], poly[(k + 1) % poly.length]));
+        if (d > best.r) best = { x, y, r: d };
+      }
+      return { p, best, exit };
+    });
+    // 모든 패드의 도형 크기를 같게 (가장 좁은 조각 기준)
+    const r = Math.min(...fits.map(f => f.best.r));
+    const size = clamp(r * 2 * 0.86, 56, 440);
+    fits.forEach(({ p, best }) => {
+      p.el.style.setProperty('--cx', best.x.toFixed(1) + 'px');
+      p.el.style.setProperty('--cy', best.y.toFixed(1) + 'px');
+      p.el.style.setProperty('--size', size.toFixed(1) + 'px');
+    });
+    const dv = $('#dividers');
+    dv.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    const exit = fits[0].exit;
+    dv.innerHTML = Array.from(dividers).map(a => { const [x, y] = exit(a); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('');
+  },
+  setShape(p, n, animate) {
+    const R = this.R;
+    const verts = shapeVertices(n, R);
+    const vr = n >= 7 ? 4.8 : n >= 5 ? 5.4 : 6.2;
+    let html = '';
+    if (n === 1) html += `<circle class="shape-fill" r="${R}"/><circle class="shape-edge" r="${R}"/>`;
+    else if (n === 2) html += `<line class="shape-edge" x1="${verts[0][0]}" y1="0" x2="${verts[1][0]}" y2="0"/>`;
+    else {
+      const pts = verts.map(v => v.map(c => c.toFixed(2)).join(',')).join(' ');
+      html += `<polygon class="shape-fill" points="${pts}"/><polygon class="shape-edge" points="${pts}"/>`;
+    }
+    verts.forEach(([x, y]) => { html += `<circle class="v-halo" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${(vr * 2.4).toFixed(1)}"/>`; });
+    verts.forEach(([x, y], k) => { html += `<circle class="v-dot${k === 0 ? ' first' : ''}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${vr}"/>`; });
+    html += `<circle class="ball" cx="${verts[0][0].toFixed(2)}" cy="${verts[0][1].toFixed(2)}" r="${n >= 7 ? 4.6 : 5.4}"/>`;
+    p.svg.innerHTML = html;
+    p.n = n; p.vpos = verts; p.vr = vr;
+    p.verts = $$('.v-dot', p.svg); p.halos = $$('.v-halo', p.svg); p.ball = $('.ball', p.svg);
+    p.vcache = verts.map(() => ''); p.cache = {};
+    p.vtimers.forEach(clearTimeout); p.vtimers = [];
+    p.count.textContent = '×' + n;
+    if (animate && !reducedMotion()) this.retrigger(p.box, 'swap');
   },
   reset(game) {
     this.game = game;
-    this.renderKey = '';
-    this.lastBeatIdx = -1; this.lastCount = null; this.lastRoundShown = null;
+    this.buildPads(game);
+    this.rpn = game.rounds.map(r => game.layout.map((_, i) => game.roundNotes[r.index].filter(n => n.pad === i)));
+    this.shownRound = null;
+    this.lastBeatIdx = -2; this.lastCount = null;
     this.displayScore = game.score.total(); this.scoreFrom = this.displayScore; this.scoreTo = this.displayScore; this.scoreStart = 0;
     this.hubScore.textContent = I18n.fmt(this.displayScore);
     this.comboChip.hidden = true; this.lastCombo = 0; this.popSlots = [];
     $$('.banner, .score-pop, .sparkles', this.float).forEach(e => e.remove());
-    Object.values(this.pads).forEach(p => { p.cache = {}; p.el.classList.remove('is-new', 'pressed', 'show-next'); });
   },
   setPressed(id, on) {
     const p = this.pads[id]; if (!p) return;
@@ -1735,32 +1815,41 @@ const Renderer = {
     }
   },
   retrigger(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); },
-  judgePop(padId, text, cls) {
-    const p = this.pads[padId];
+  judgePop(pad, text, cls) {
+    const p = this.pads[pad]; if (!p) return;
     const d = document.createElement('div');
     d.className = 'judge-pop ' + cls; d.textContent = text;
     d.addEventListener('animationend', () => d.remove());
-    p.body.appendChild(d);
+    p.el.appendChild(d);
   },
   onJudge(n, result, fx) {
-    const p = this.pads[n.padId];
-    this.judgePop(n.padId, result.toUpperCase(), result);
-    p.flash.style.setProperty('--flash', Theme.color('--' + result));
-    this.retrigger(p.flash, 'go');
-    if (result === 'miss' && !reducedMotion()) this.retrigger(p.note, 'shake');
+    const p = this.pads[n.pad];
+    this.judgePop(n.pad, result.toUpperCase(), result);
+    if (p) {
+      p.el.querySelector('.pad-flash').style.setProperty('--flash', Theme.color('--' + result));
+      this.retrigger(p.el.querySelector('.pad-flash'), 'go');
+      if (result === 'miss' && !reducedMotion()) this.retrigger(p.box, 'shake');
+      const v = n.round === this.shownRound ? p.verts[n.vertex] : null;
+      if (v) {
+        v.classList.remove('j-perfect', 'j-great', 'j-good', 'j-miss');
+        v.classList.add('j-' + result);
+        clearTimeout(p.vtimers[n.vertex]);
+        p.vtimers[n.vertex] = setTimeout(() => v.classList.remove('j-' + result), 420);
+      }
+    }
     const bonus = (fx.comboBonus || 0) + (fx.milestone || 0);
     if (bonus > 0) this.scorePop('+' + I18n.fmt(bonus * this.game.score.mul));
     if (fx.callout) { this.banner(fx.callout + ' PERFECT COMBO!', 'callout perfect', 900); AudioEngine.milestone(); }
     this.updateScoreTarget();
   },
-  onWrong(padId, pts) {
-    this.judgePop(padId, I18n.fmt(pts * this.game.score.mul), 'wrong');
+  onWrong(pad, pts) {
+    this.judgePop(pad, I18n.fmt(pts * this.game.score.mul), 'wrong');
     this.updateScoreTarget();
   },
   onRoundEnd(r, fx) {
     const map = { PERFECT: ['PERFECT ROUND!', 'perfect'], GREAT: ['GREAT ROUND', 'great'], GOOD: ['GOOD ROUND', 'good'], BREAK: ['BREAK', 'break'] };
     const [txt, cls] = map[fx.grade];
-    this.banner(txt, 'round ' + cls, 600);
+    this.banner(txt, 'round ' + cls, 900);
     if (fx.grade === 'PERFECT') { AudioEngine.arpeggio(); this.sparkles(14); }
     else if (fx.grade === 'BREAK') AudioEngine.buu();
     if (fx.bonus > 0) this.scorePop('+' + I18n.fmt(fx.bonus * this.game.score.mul));
@@ -1811,119 +1900,65 @@ const Renderer = {
     if (target > this.scoreFrom) this.retrigger(this.hubScore, 'bump');
   },
 
-  dotsHTML(round, padId) {
-    const g = this.game;
-    const notes = g.roundNotes[round.index].filter(n => n.padId === padId);
-    const step = 4 / round.subdiv;
-    let h = '';
-    for (let s = 0; s < round.subdiv; s++) {
-      const bp = s * step;
-      const n = notes.find(x => Math.abs(x.beatPos - bp) < 1e-6);
-      let cls = 'dot' + (round.subdiv === 8 && s % 2 ? ' half' : '');
-      if (n) cls += n.judged ? ' j-' + n.result : ' on';
-      h += `<i class="${cls}" data-s="${s}"></i>`;
-    }
-    return h;
-  },
-
   frame(now) {
     const g = this.game;
-    if (!g) return;
+    if (!g || !this.pads.length) return;
     const tv = now - g.offset;
     const pos = g.position(tv);
-    const inPlay = pos.phase === 'round' || pos.phase === 'gap';
-    const dispRound = pos.phase === 'countIn' ? null : pos.round;
-    const activeRound = g.rounds[dispRound == null ? g.firstRound : dispRound];
-    let nextIdx = null;
-    if (pos.phase === 'countIn') nextIdx = g.firstRound;
-    else if ((pos.phase === 'round' && pos.beat >= 3) || pos.phase === 'gap') nextIdx = pos.round + 1 < CONFIG.TOTAL_ROUNDS ? pos.round + 1 : null;
-    const beatIdx = Math.floor(pos.beat);
+    const r = pos.round;
+    const round = g.rounds[r];
 
-    // --- 라운드 전환: NEW! 뱃지
-    if (dispRound != null && dispRound !== this.lastRoundShown) {
-      this.lastRoundShown = dispRound;
-      const r = g.rounds[dispRound];
-      r.newPads.forEach(id => {
-        const p = this.pads[id];
-        p.el.classList.remove('is-new'); void p.el.offsetWidth; p.el.classList.add('is-new');
-        setTimeout(() => p.el.classList.remove('is-new'), 1600);
-      });
+    // --- 라운드가 바뀌면(준비 시간 시작) 도형 교체
+    if (this.shownRound !== r) {
+      const animate = this.shownRound !== null;
+      this.shownRound = r;
+      this.pads.forEach((p, i) => this.setShape(p, round.shapes[i], animate || true));
     }
 
-    // --- 도트/아이콘 (판정·라운드·미리보기 변화 시에만 다시 그림)
-    const key = `${dispRound}|${nextIdx}|${g.version}|${inPlay ? beatIdx : -1}`;
-    if (key !== this.renderKey) {
-      this.renderKey = key;
-      CONFIG.PAD_IDS.forEach(id => {
-        const p = this.pads[id];
-        const active = activeRound.pads.includes(id);
-        p.el.classList.toggle('inactive', !active && !(nextIdx != null && g.rounds[nextIdx].pads.includes(id) && pos.phase === 'countIn'));
-        if (dispRound != null && active) {
-          p.dots.innerHTML = this.dotsHTML(activeRound, id);
-          if (pos.phase === 'round') {
-            const sub = activeRound.subdiv, per = sub / 4;
-            $$('.dot', p.dots).forEach((d, s) => { if (Math.floor(s / per) === beatIdx) d.classList.add('now'); });
-          }
-        } else p.dots.innerHTML = '';
-        const showNext = nextIdx != null && g.rounds[nextIdx].pads.includes(id);
-        p.el.classList.toggle('show-next', showNext);
-        if (showNext) p.nextDots.innerHTML = this.dotsHTML(g.rounds[nextIdx], id);
-        // 아이콘: 다가오는 노트가 8분음표면 ♪, 아니면 ♩
-        const upcoming = g.padNotes[id].find(n => !n.judged && n.round >= g.firstRound);
-        const inRoundLeft = g.roundNotes[activeRound.index].some(n => n.padId === id && !n.judged);
-        p.icon.textContent = upcoming && upcoming.eighth ? '♪' : '♩';
-        p.icon.classList.toggle('done', dispRound != null && active && !inRoundLeft && !showNext);
-      });
-    }
-
-    // --- 음표 두근 & 접근 링 (오디오 시계 기준, 매 프레임 계산). 패드 자체는 움직이지 않는다
-    const rm = reducedMotion();
-    const amp = rm ? 0.08 : 0.24;
-    CONFIG.PAD_IDS.forEach(id => {
-      const p = this.pads[id];
-      let upcoming = null, last = null;
-      for (const n of g.padNotes[id]) {
-        if (n.round < g.firstRound) continue;
-        if (n.time > tv) { if (!upcoming || n.time < upcoming.time) upcoming = n; }
-        else if (!last || n.time > last.time) last = n;
-      }
-      // 두근: T 순간 음표가 커졌다 돌아오고 후광이 번짐
-      let iconS = 1, halo = 0;
-      if (last) {
-        const e = tv - last.time;
-        if (e < CONFIG.PULSE_S) {
+    // --- 공 이동 & 꼭짓점 두근 (오디오 시계 기준 매 프레임 계산)
+    const f = pos.phase === 'round' ? pos.barFrac : pos.phase === 'end' ? 0.9999 : 0;
+    const amp = reducedMotion() ? 0.3 : 0.9;
+    this.pads.forEach((p, i) => {
+      const [bx, by] = ballAt(p.n, p.vpos, f, this.R);
+      const bk = bx.toFixed(2) + ',' + by.toFixed(2);
+      if (p.cache.ball !== bk) { p.cache.ball = bk; p.ball.setAttribute('cx', bx.toFixed(2)); p.ball.setAttribute('cy', by.toFixed(2)); }
+      const pulse = new Array(p.n).fill(0);
+      for (const n of this.rpn[r][i]) {
+        const e = tv - n.time;
+        if (e >= 0 && e < CONFIG.PULSE_S) {
           const k = e / CONFIG.PULSE_S;
-          const curve = Math.max(0, Math.sin(Math.PI * Math.min(1, k * 1.25)) * (1 - k * 0.3));
-          iconS = 1 + amp * curve;
-          halo = 1 - k;
+          pulse[n.vertex] = Math.max(pulse[n.vertex], Math.max(0, Math.sin(Math.PI * Math.min(1, k * 1.25)) * (1 - k * 0.3)));
+        } else if (e < 0 && e > -0.12) {
+          pulse[n.vertex] = Math.max(pulse[n.vertex], (1 + e / 0.12) * 0.15);   // 닿기 직전 살짝 예고
         }
       }
-      // 접근 링: T − 1박 ~ T 동안 음표 둘레로 바깥에서 줄어듦
-      let ringS = 1, ringO = 0;
-      if (upcoming && !upcoming.judged) {
-        const pr = (upcoming.time - tv) / g.beatDur;
-        if (pr <= 1) { ringS = 1 + 0.55 * pr; ringO = 0.15 + 0.85 * (1 - pr); halo = Math.max(halo, (1 - pr) * 0.2); }
+      for (let k = 0; k < p.n; k++) {
+        const v = pulse[k];
+        const key = v.toFixed(3);
+        if (p.vcache[k] === key) continue;
+        p.vcache[k] = key;
+        p.verts[k].setAttribute('r', (p.vr * (1 + amp * v)).toFixed(2));
+        p.halos[k].style.opacity = (v * 0.9).toFixed(2);
+        p.halos[k].setAttribute('r', (p.vr * (1.6 + 1.6 * v)).toFixed(2));
       }
-      const c = p.cache;
-      const is = iconS.toFixed(3);
-      if (c.is !== is) { c.is = is; p.icon.style.transform = iconS === 1 ? '' : `scale(${is}) translateY(${((1 - iconS) * 30).toFixed(1)}%)`; }
-      const ho = halo.toFixed(2) + '|' + is;
-      if (c.ho !== ho) { c.ho = ho; p.halo.style.opacity = halo.toFixed(2); p.halo.style.transform = `scale(${(0.85 + 0.35 * (iconS - 1) / 0.24 + 0.15 * halo).toFixed(3)})`; }
-      const rs = ringS.toFixed(4) + '|' + ringO.toFixed(2);
-      if (c.rs !== rs) { c.rs = rs; p.ring.style.transform = `scale(${ringS.toFixed(4)})`; p.ring.style.opacity = ringO.toFixed(2); }
     });
 
-    // --- 허브: 박자 세그먼트, 재생헤드(연속 이동), 라운드 진행
-    const barFrac = clamp(pos.beat / 4, 0, 0.9999);
-    this.hubHead.setAttribute('transform', `rotate(${(barFrac * 360).toFixed(2)} 50 50)`);
+    // --- 허브: 박자 세그먼트, 재생헤드, 라운드 진행
+    let beatIdx = -1, headFrac = 0;
+    if (pos.phase === 'round') { beatIdx = Math.floor(pos.beat) % CONFIG.BEATS_PER_BAR; headFrac = pos.barFrac; }
+    else if (pos.phase === 'prep' && pos.beatsLeft <= CONFIG.COUNT_IN_BEATS) {
+      beatIdx = CONFIG.COUNT_IN_BEATS - Math.ceil(pos.beatsLeft);
+      headFrac = (CONFIG.COUNT_IN_BEATS - pos.beatsLeft) / CONFIG.COUNT_IN_BEATS;
+    }
+    this.hubHead.setAttribute('transform', `rotate(${(clamp(headFrac, 0, 0.9999) * 360).toFixed(2)} 50 50)`);
     if (beatIdx !== this.lastBeatIdx) {
       this.lastBeatIdx = beatIdx;
       this.hubSegs.forEach((sg, i) => sg.classList.toggle('on', i === beatIdx && pos.phase !== 'end'));
     }
-    const doneRounds = pos.phase === 'countIn' ? g.firstRound : pos.round + (pos.phase === 'end' ? 1 : barFrac);
-    this.hubProg.setAttribute('stroke-dasharray', `${(this.progLen * doneRounds / CONFIG.TOTAL_ROUNDS).toFixed(2)} 1000`);
-    if (pos.phase === 'countIn') {
-      const cnt = String(4 - Math.min(3, beatIdx));
+    const done = pos.phase === 'end' ? CONFIG.TOTAL_ROUNDS : r + (pos.phase === 'round' ? pos.beat / g.roundBeats : 0);
+    this.hubProg.setAttribute('stroke-dasharray', `${(this.progLen * done / CONFIG.TOTAL_ROUNDS).toFixed(2)} 1000`);
+    if (pos.phase === 'prep') {
+      const cnt = pos.beatsLeft > CONFIG.COUNT_IN_BEATS ? `R${r + 1}` : String(Math.max(1, Math.ceil(pos.beatsLeft)));
       if (this.lastCount !== cnt) {
         this.lastCount = cnt;
         this.hubCount.hidden = false; this.hubScore.hidden = true;
@@ -1931,12 +1966,9 @@ const Renderer = {
         this.hubRound.textContent = t('countIn');
         this.retrigger(this.hubCount, 'tick');
       }
-    } else if (this.lastCount !== null) {
-      this.lastCount = null;
-      this.hubCount.hidden = true; this.hubScore.hidden = false;
-    }
-    if (pos.phase !== 'countIn') {
-      const rt = `R${Math.min(pos.round, 7) + 1}/${CONFIG.TOTAL_ROUNDS}`;
+    } else {
+      if (this.lastCount !== null) { this.lastCount = null; this.hubCount.hidden = true; this.hubScore.hidden = false; }
+      const rt = `R${r + 1}/${CONFIG.TOTAL_ROUNDS} · ${pos.bar + 1}/${CONFIG.BARS_PER_ROUND}`;
       if (this.hubRound.textContent !== rt) this.hubRound.textContent = rt;
     }
 
@@ -1958,13 +1990,8 @@ const Renderer = {
 };
 
 /* =========================================================================
-   5. InputManager — 포인터(멀티터치) / 키보드 → padId
+   5. InputManager — 포인터(멀티터치) / 키보드(Q·W·A·S) → 패드 번호
    ========================================================================= */
-const KEY_TO_PAD = {
-  Numpad7: 7, Numpad9: 9, Numpad1: 1, Numpad3: 3,   // NumLock 상태와 무관하게 code 로 판별
-  KeyQ: 7, KeyW: 9, KeyA: 1, KeyS: 3,
-  KeyU: 7, KeyI: 9, KeyJ: 1, KeyK: 3,
-};
 const InputManager = {
   pointerPad: new Map(),
   lastHit: {},
@@ -1972,6 +1999,13 @@ const InputManager = {
   normTs(ts) {
     const now = performance.now();
     return (typeof ts === 'number' && ts > 0 && ts <= now + 5 && now - ts < 500) ? ts : now;
+  },
+  /** 키 코드 → 현재 난이도 레이아웃의 패드 번호 (없으면 null) */
+  keyToPad(code, layout) {
+    const pos = KEY_POS[code];
+    if (!pos || !layout) return null;
+    const i = layout.findIndex(d => d.keys.includes(pos));
+    return i >= 0 ? i : null;
   },
   init(handler) {
     this.handler = handler;
@@ -2002,8 +2036,19 @@ const InputManager = {
 };
 
 /* =========================================================================
-   8. ResultCard — 결과 공유 이미지 (1080×1350, 캔버스 직접 렌더)
+   8. ResultCard — 저장용 결과 이미지 (1080×1350, 캔버스 직접 렌더)
    ========================================================================= */
+/* 총 등급: 이론상 최대 점수 대비 비율 (콤보 보너스 비중이 커서 기준을 너그럽게) */
+const TIERS = [[0.93, 'CHALLENGER'], [0.80, 'DIAMOND'], [0.65, 'PLATINUM'], [0.45, 'GOLD'], [0.25, 'SILVER'], [0, 'BRONZE']];
+const TIER_COLORS = {
+  light: { BRONZE: '#B8692E', SILVER: '#7F8C9B', GOLD: '#E0A200', PLATINUM: '#1FA89B', DIAMOND: '#3D7DFF' },
+  dark: { BRONZE: '#E0955A', SILVER: '#C9D2DD', GOLD: '#FFCB2E', PLATINUM: '#4FE0CF', DIAMOND: '#7AA8FF' },
+};
+/** 이론상 최대 점수 대비 비율로 총 등급 결정 */
+function tierOf(res) {
+  const pct = res.maxPossible ? res.total / res.maxPossible : 0;
+  return TIERS.find(([min]) => pct >= min)[1];
+}
 const ResultCard = {
   fontFamily() {
     if (I18n.lang === 'ja') return '"Pretendard JP Variable", "Pretendard Variable", system-ui, sans-serif';
@@ -2017,7 +2062,7 @@ const ResultCard = {
     if (I18n.lang === 'ja') fams.push('"Pretendard JP Variable"');
     if (I18n.lang === 'zh') fams.push('"Noto Sans SC"');
     const jobs = [];
-    fams.forEach(f => [500, 700, 900].forEach(w => jobs.push(document.fonts.load(`${w} 40px ${f}`, sample).catch(() => null))));
+    fams.forEach(f => [700, 900].forEach(w => jobs.push(document.fonts.load(`${w} 40px ${f}`, sample).catch(() => null))));
     await Promise.race([Promise.all(jobs).then(() => document.fonts.ready), new Promise(r => setTimeout(r, 2500))]);
   },
   rr(ctx, x, y, w, h, r) {
@@ -2030,7 +2075,7 @@ const ResultCard = {
     do { ctx.font = `${weight} ${s}px ${fam}`; if (ctx.measureText(text).width <= maxW) break; s -= 2; } while (s > 12);
     return s;
   },
-  async render(result) {
+  async render(res) {
     const W = 1080, H = 1350;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
@@ -2038,120 +2083,56 @@ const ResultCard = {
     const C = n => Theme.color(n);
     const fam = this.fontFamily();
     const numFam = '"Pretendard Variable", Pretendard, system-ui, sans-serif';
-    const lvl = t(result.level);
-    const date = new Intl.DateTimeFormat(I18n.lang === 'zh' ? 'zh-CN' : I18n.lang, { dateStyle: 'medium' }).format(new Date(result.playedAt));
-    const tend = tendencyText(result.avgDeltaMs);
-    const texts = [t('title'), t('totalScore'), t('scoreHit'), t('scoreRound'), t('scoreCombo'), t('scoreSpecial'), t('scorePenalty'),
-      t('accuracy'), t('maxCombo'), t('maxPossible'), tend, lvl, t('challengeCode', { seed: result.seed }), date, '0123456789,%×·#/+-−'];
-    await this.waitFonts(texts);
+    const tier = tierOf(res);
+    const tierName = t('tier' + tier);
+    const site = /^https?:$/.test(location.protocol) ? location.host : 'rhythm-master';
+    const meta = `${t(res.level)} · BPM ${res.bpm}`;
+    const code = t('challengeCode', { seed: res.seed });
+    await this.waitFonts([t('title'), tierName, meta, code, '0123456789,#·RPGoX']);
 
-    // 배경: 라이트 = 파스텔 그라데이션, 다크 = 딥퍼플 + 네온 글로우
-    ctx.fillStyle = C('--bg'); ctx.fillRect(0, 0, W, H);
-    const blobs = [['--pad-7', 120, 140], ['--pad-9', 980, 260], ['--pad-1', 140, 1200], ['--pad-3', 960, 1150]];
-    blobs.forEach(([c, x, y]) => {
-      const g = ctx.createRadialGradient(x, y, 0, x, y, 620);
-      const col = C(c);
-      g.addColorStop(0, hexA(col, dark ? 0.45 : 0.7)); g.addColorStop(1, hexA(col, 0));
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    });
-    // 도트 패턴
-    ctx.fillStyle = dark ? 'rgba(255,255,255,.05)' : 'rgba(43,43,58,.05)';
-    for (let y = 30; y < H; y += 40) for (let x = 30 + (y / 40 % 2) * 20; x < W; x += 40) { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); }
-
-    // 카드
-    ctx.save();
-    ctx.shadowColor = dark ? 'rgba(0,0,0,.5)' : 'rgba(60,40,80,.18)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 16;
-    this.rr(ctx, 60, 60, W - 120, H - 120, 56);
-    ctx.fillStyle = dark ? 'rgba(42,38,64,.92)' : 'rgba(255,255,255,.9)'; ctx.fill();
-    ctx.restore();
-
-    const text = C('--text'), sub = C('--text-sub');
-    ctx.textBaseline = 'alphabetic';
-    // 1. 타이틀 + 날짜 (패드 4색 로고)
+    // 배경: 패드 4색 4분할
     const cols = ['--pad-7', '--pad-9', '--pad-1', '--pad-3'].map(C);
-    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([i, j], k) => { this.rr(ctx, 120 + i * 38, 118 + j * 38, 32, 32, 9); ctx.fillStyle = cols[k]; ctx.fill(); });
-    ctx.textAlign = 'left'; ctx.fillStyle = text;
-    this.fit(ctx, t('title'), 800, 54, 680, fam);
-    ctx.fillText(t('title'), 218, 168);
-    ctx.font = `600 28px ${fam}`; ctx.fillStyle = sub; ctx.fillText(date, 220, 204);
-
-    // 2. 총점
-    ctx.textAlign = 'center';
-    ctx.font = `900 30px ${numFam}`; ctx.fillStyle = sub;
-    ctx.fillText(t('totalScore').toUpperCase(), W / 2, 296);
-    ctx.fillStyle = text;
-    if (dark) { ctx.save(); ctx.shadowColor = C('--pad-7'); ctx.shadowBlur = 40; }
-    this.fit(ctx, I18n.fmt(result.total), 900, 160, W - 220, numFam);
-    ctx.fillText(I18n.fmt(result.total), W / 2, 432);
-    if (dark) ctx.restore();
-    const pct = result.maxPossible ? Math.floor(result.total / result.maxPossible * 100) : 0;
-    ctx.font = `700 30px ${numFam}`; ctx.fillStyle = sub;
-    ctx.fillText(`${I18n.fmt(result.total)} / ${I18n.fmt(result.maxPossible)} (${pct}%)`, W / 2, 482);
-    // 진행 바
-    this.rr(ctx, 160, 504, W - 320, 14, 7); ctx.fillStyle = dark ? 'rgba(255,255,255,.1)' : 'rgba(43,43,58,.08)'; ctx.fill();
-    const grad = ctx.createLinearGradient(160, 0, W - 160, 0);
-    cols.forEach((c, i) => grad.addColorStop(i / 3, c));
-    this.rr(ctx, 160, 504, Math.max(14, (W - 320) * Math.min(1, pct / 100)), 14, 7); ctx.fillStyle = grad; ctx.fill();
-    if (result.fullPerfect) {
-      ctx.font = `900 28px ${numFam}`; ctx.fillStyle = C('--perfect'); ctx.fillText('★ ' + t('allPerfect') + ' ★', W / 2, 256);
-    }
-
-    // 3. 점수 구성
-    const rows = [[t('scoreHit'), result.breakdown.hit], [t('scoreRound'), result.breakdown.round], [t('scoreCombo'), result.breakdown.combo], [t('scoreSpecial'), result.breakdown.special]];
-    if (result.wrongHits) rows.push([t('scorePenalty'), -result.breakdown.penalty]);
-    rows.push([t('scoreMultiplier'), '× ' + result.breakdown.multiplier.toFixed(2)]);
-    let y = 580;
-    const rowH = 48;
-    rows.forEach(([k, v]) => {
-      ctx.textAlign = 'left'; ctx.fillStyle = sub; this.fit(ctx, k, 700, 30, 560, fam); ctx.fillText(k, 140, y);
-      ctx.textAlign = 'right'; ctx.fillStyle = typeof v === 'number' && v < 0 ? C('--danger') : text;
-      ctx.font = `800 32px ${numFam}`;
-      ctx.fillText(typeof v === 'number' ? (v < 0 ? '−' + I18n.fmt(-v) : I18n.fmt(v)) : v, W - 140, y);
-      y += rowH;
-    });
-    ctx.textAlign = 'center'; ctx.fillStyle = text; ctx.font = `700 30px ${fam}`;
-    const accLine = `${t('accuracy')} ${result.accuracy.toFixed(1)}%  ·  ${t('maxCombo')} ${result.maxPerfectCombo}`;
-    this.fit(ctx, accLine, 700, 30, W - 220, fam);
-    ctx.fillText(accLine, W / 2, y + 8);
-
-    // 4. 판정 개수 칩 (패드 색)
-    const chips = [['PERFECT', result.counts.perfect, cols[3]], ['GREAT', result.counts.great, cols[2]], ['GOOD', result.counts.good, cols[1]], ['MISS', result.counts.miss, cols[0]]];
-    const cy = y + 36, cw = 196, gap = 16, cx0 = (W - (cw * 4 + gap * 3)) / 2;
-    chips.forEach(([k, v, c], i) => {
-      const x = cx0 + i * (cw + gap);
-      this.rr(ctx, x, cy, cw, 92, 24); ctx.fillStyle = c; ctx.fill();
-      ctx.fillStyle = '#2F2540'; ctx.textAlign = 'center';
-      ctx.font = `800 22px ${numFam}`; ctx.fillText(k, x + cw / 2, cy + 36);
-      ctx.font = `900 38px ${numFam}`; ctx.fillText(String(v), x + cw / 2, cy + 76);
-    });
-
-    // 5. 라운드 등급 배지 8개
+    ctx.fillStyle = C('--pad-gap') || '#999'; ctx.fillRect(0, 0, W, H);
+    const g = 3;
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([i, j], k) => { ctx.fillStyle = cols[k]; ctx.fillRect(i * (W / 2 + g / 2), j * (H / 2 + g / 2), W / 2 - g / 2, H / 2 - g / 2); });
+    // 가운데 카드
+    const cx0 = 110, cy0 = 230, cw = W - 220, ch = 890;
+    ctx.save();
+    ctx.shadowColor = 'rgba(40,20,60,.25)'; ctx.shadowBlur = 60; ctx.shadowOffsetY = 18;
+    this.rr(ctx, cx0, cy0, cw, ch, 64);
+    ctx.fillStyle = dark ? 'rgba(30,27,46,.92)' : 'rgba(255,255,255,.92)'; ctx.fill();
+    ctx.restore();
+    const text = dark ? '#F3F0FF' : '#2B2B3A', sub = dark ? '#B8B3D1' : '#6B6B80';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = text; this.fit(ctx, t('title'), 800, 46, cw - 120, fam); ctx.fillText(t('title'), W / 2, cy0 + 100);
+    ctx.fillStyle = sub; ctx.font = `700 30px ${fam}`; ctx.fillText(meta, W / 2, cy0 + 150);
+    // 총 등급
+    const ts = this.fit(ctx, tierName, 900, 150, cw - 120, fam);
+    if (tier === 'CHALLENGER') {
+      const tw = ctx.measureText(tierName).width;
+      const gr = ctx.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
+      gr.addColorStop(0, '#FF4D6D'); gr.addColorStop(0.5, '#9B5CFF'); gr.addColorStop(1, '#2FB4FF');
+      ctx.fillStyle = gr;
+    } else ctx.fillStyle = TIER_COLORS[dark ? 'dark' : 'light'][tier];
+    ctx.fillText(tierName, W / 2, cy0 + 190 + ts);
+    // 점수
+    ctx.fillStyle = text; this.fit(ctx, I18n.fmt(res.total), 900, 150, cw - 120, numFam);
+    ctx.fillText(I18n.fmt(res.total), W / 2, cy0 + 530);
+    // 라운드 등급 8개
     const gradeCol = { PERFECT: C('--perfect'), GREAT: C('--great'), GOOD: C('--good'), BREAK: C('--miss') };
-    const gradeTxt = { PERFECT: 'P', GREAT: 'G', GOOD: 'Go', BREAK: 'X' };
-    const by = cy + 92 + 58, bs = 104, bx0 = W / 2 - bs * 3.5;
-    result.roundGrades.forEach((gname, i) => {
-      const x = bx0 + i * bs;
-      ctx.beginPath(); ctx.arc(x, by, 38, 0, Math.PI * 2); ctx.fillStyle = gradeCol[gname]; ctx.fill();
+    const short = { PERFECT: 'P', GREAT: 'G', GOOD: 'Go', BREAK: 'X' };
+    const bs = (cw - 100) / 8, by = cy0 + 660;
+    res.roundGrades.forEach((gname, i) => {
+      const x = cx0 + 50 + bs * (i + 0.5);
+      ctx.beginPath(); ctx.arc(x, by, bs * 0.4, 0, Math.PI * 2); ctx.fillStyle = gradeCol[gname]; ctx.fill();
       ctx.fillStyle = gname === 'PERFECT' || gname === 'GREAT' ? '#1A1628' : '#fff';
-      ctx.font = `900 28px ${numFam}`; ctx.textAlign = 'center'; ctx.fillText(gradeTxt[gname], x, by + 10);
-      ctx.fillStyle = sub; ctx.font = `700 18px ${numFam}`; ctx.fillText('R' + (i + 1), x, by + 64);
+      ctx.font = `900 ${Math.round(bs * 0.32)}px ${numFam}`; ctx.fillText(short[gname], x, by + bs * 0.11);
+      ctx.fillStyle = sub; ctx.font = `800 22px ${numFam}`; ctx.fillText('R' + (i + 1), x, by + bs * 0.4 + 36);
     });
-
-    // 6. 타이밍 성향
-    if (tend) {
-      ctx.fillStyle = text; ctx.textAlign = 'center';
-      this.fit(ctx, tend, 800, 36, W - 220, fam);
-      ctx.fillText(tend, W / 2, Math.min(by + 116, H - 190));
-    }
-    // 7. 하단 정보
-    const site = /^https?:$/.test(location.protocol) ? location.host : 'rhythm-master.example';
-    ctx.fillStyle = sub; ctx.textAlign = 'center';
-    const foot1 = `BPM ${result.bpm} · ${lvl} · ${site}`;
-    this.fit(ctx, foot1, 700, 26, W - 220, fam); ctx.fillText(foot1, W / 2, H - 130);
-    const foot2 = t('challengeCode', { seed: result.seed });
-    ctx.fillStyle = text; this.fit(ctx, foot2, 800, 28, W - 220, fam); ctx.fillText(foot2, W / 2, H - 92);
-
-    return new Promise(res => cv.toBlob(b => res(b), 'image/png'));
+    ctx.fillStyle = sub; this.fit(ctx, code, 700, 28, cw - 120, fam); ctx.fillText(code, W / 2, cy0 + ch - 60);
+    // 하단 사이트
+    ctx.fillStyle = 'rgba(43,43,58,.75)'; ctx.font = `800 30px ${numFam}`; ctx.fillText(site, W / 2, H - 70);
+    return new Promise(r => cv.toBlob(b => r(b), 'image/png'));
   },
 };
 function hexA(color, a) {
@@ -2160,17 +2141,9 @@ function hexA(color, a) {
   const n = parseInt(m[1], 16);
   return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
 }
-function tendencyText(avg) {
-  if (avg == null) return '';
-  const ms = Math.round(avg);
-  const sign = ms > 0 ? '+' : ms < 0 ? '−' : '±';
-  const avgStr = t('avgTiming', { ms: sign + Math.abs(ms) });
-  if (Math.abs(avg) <= 10) return `±10ms · ${t('tendencyOn')}`;
-  return `${avgStr} · ${avg > 0 ? t('tendencyLate') : t('tendencyEarly')}`;
-}
 
 /* =========================================================================
-   결과 화면 연출 — 점수 촤르륵
+   결과 화면 연출 — 라운드 등급이 탁탁 찍히고, 점수가 촤르륵 오른 뒤, 총 등급 공개
    ========================================================================= */
 const ResultView = {
   skipped: false, animating: false, waiters: new Set(),
@@ -2187,16 +2160,14 @@ const ResultView = {
     this.skipped = true;
     Array.from(this.waiters).forEach(f => f());
   },
-  countUp(el, to, dur, ease, fmtFn) {
-    fmtFn = fmtFn || (v => I18n.fmt(v));
-    if (this.skipped || dur <= 0 || to === 0) { el.textContent = fmtFn(to); return Promise.resolve(); }
+  countUp(el, to, dur, ease) {
+    if (this.skipped || dur <= 0 || to === 0) { el.textContent = I18n.fmt(to); return Promise.resolve(); }
     return new Promise(res => {
       const t0 = performance.now(); let lastTick = 0;
       const step = () => {
         const k = clamp((performance.now() - t0) / dur, 0, 1);
-        if (this.skipped || k >= 1) { el.textContent = fmtFn(to); res(); return; }
-        const e = ease(k);
-        el.textContent = fmtFn(Math.round(to * e));
+        if (this.skipped || k >= 1) { el.textContent = I18n.fmt(to); res(); return; }
+        el.textContent = I18n.fmt(Math.round(to * ease(k)));
         const now = performance.now();
         if (now - lastTick >= 40) { lastTick = now; AudioEngine.countTick(k); }
         requestAnimationFrame(step);
@@ -2204,86 +2175,36 @@ const ResultView = {
       requestAnimationFrame(step);
     });
   },
-  row(cls, label, sub, id) {
-    const li = document.createElement('li');
-    li.className = 'score-row ' + cls;
-    li.innerHTML = `<span class="lbl"></span><span class="val num" id="${id}">0</span>${sub != null ? '<span class="sub"></span>' : ''}`;
-    $('.lbl', li).textContent = label;
-    if (sub != null) { if (sub instanceof Node) $('.sub', li).appendChild(sub); else $('.sub', li).textContent = sub; }
-    return li;
+  setMeta(res) {
+    $('#result-meta').textContent = `${t(res.level)} · BPM ${res.bpm} · #${res.seed}`;
+    const tier = tierOf(res);
+    const el = $('#tier');
+    el.className = 'tier tier-' + tier + (el.classList.contains('in') ? ' in' : '');
+    el.textContent = t('tier' + tier);
   },
-  async play(res, isNewRecord, best) {
-    this.skipped = false; this.animating = true;
-    const easeOutCubic = k => 1 - Math.pow(1 - k, 3);
+  async play(res, isNewRecord) {
+    this.skipped = reducedMotion(); this.animating = true;
     const easeOutExpo = k => (k >= 1 ? 1 : 1 - Math.pow(2, -10 * k));
-    const bd = res.breakdown;
-    const ul = $('#score-rows'); ul.innerHTML = '';
+    $('#tier').classList.remove('in');
+    this.setMeta(res);
     $('#total-num').textContent = '0';
     $('#new-record').hidden = true;
-    $('#achieve-block').classList.remove('in'); $('#achieve-meter').style.width = '0';
-    $('#result-extra').classList.remove('in');
     $('#skip-hint').hidden = false;
-    $('#result-meta').textContent = `#${res.seed} · BPM ${res.bpm} · ${t(res.level)}`;
-    this.fillExtras(res, best);
-
-    const rows = [];
-    rows.push([this.row('', t('scoreHit'), `PERFECT ${res.counts.perfect} · GREAT ${res.counts.great} · GOOD ${res.counts.good}`, 'rv-hit'), bd.hit, 800]);
-    const badges = document.createElement('div'); badges.className = 'round-badges';
+    $('#result-buttons').classList.add('wait');
     const short = { PERFECT: 'P', GREAT: 'G', GOOD: 'Go', BREAK: 'X' };
-    res.roundGrades.forEach((g, i) => { const b = document.createElement('span'); b.className = 'rb ' + g; b.textContent = short[g]; b.title = `R${i + 1} ${g}`; badges.appendChild(b); });
-    rows.push([this.row('', t('scoreRound'), badges, 'rv-round'), bd.round, 600, 'badges']);
-    rows.push([this.row('', t('scoreCombo'), t('maxComboN', { n: res.maxPerfectCombo }), 'rv-combo'), bd.combo, 600]);
-    if (bd.special > 0) rows.push([this.row('special', t('scoreSpecial'), res.specials.map(s => (s.i18n ? t(s.i18n) : s.label)).join(' · '), 'rv-special'), bd.special, 700]);
-    if (res.wrongHits > 0) rows.push([this.row('penalty', t('scorePenalty'), t('wrongHitCount', { n: res.wrongHits }), 'rv-pen'), -bd.penalty, 500]);
-    rows.push([this.row('mult', t('scoreMultiplier'), `${t(res.level)} ×${bd.levelMul.toFixed(1)} · BPM ${res.bpm} ×${bd.bpmMul.toFixed(2)}`, 'rv-mul'), null, 0, 'mult']);
-    rows.forEach(([li]) => ul.appendChild(li));
-
-    const rm = reducedMotion();
-    if (rm) this.skipped = true;
-    for (const [li, value, dur, kind] of rows) {
-      li.classList.add('in');
-      await this.wait(180);
-      const val = $('.val', li);
-      if (kind === 'badges') {
-        for (const b of $$('.rb', li)) { b.classList.add('stamp'); if (!this.skipped) AudioEngine.tap(); await this.wait(100); }
-      }
-      if (kind === 'mult') { val.textContent = '× ' + bd.multiplier.toFixed(2); await this.wait(350); continue; }
-      if (value < 0) await this.countUp(val, -value, dur, easeOutCubic, v => '−' + I18n.fmt(v));
-      else await this.countUp(val, value, dur, easeOutCubic);
-      await this.wait(160);
-    }
-    // 총점: 1.8초 easeOutExpo — 빠르게 돌다가 끝에서 조용히 멈춤 (마무리 효과음·튕김 없음)
+    const box = $('#round-badges');
+    box.innerHTML = res.roundGrades.map((g, i) => `<span class="rb ${g}" title="R${i + 1} ${g}"><i>${short[g]}</i><small>R${i + 1}</small></span>`).join('');
+    await this.wait(250);
+    for (const b of $$('.rb', box)) { b.classList.add('stamp'); if (!this.skipped) AudioEngine.tap(); await this.wait(110); }
+    // 점수: 1.8초 easeOutExpo — 빠르게 돌다가 끝에서 조용히 멈춤
     await this.countUp($('#total-num'), res.total, 1800, easeOutExpo);
-    this.skipped = true;   // 이후 대기 없이 마무리
-    $$('.score-row').forEach(li => li.classList.add('in'));
-    $$('.rb').forEach(b => b.classList.add('stamp'));
-    const pct = res.maxPossible ? Math.floor(res.total / res.maxPossible * 100) : 0;
-    $('#achieve-block').classList.add('in');
-    requestAnimationFrame(() => { $('#achieve-meter').style.width = Math.min(100, pct) + '%'; });
+    await this.wait(200);
+    $$('.rb', box).forEach(b => b.classList.add('stamp'));
+    $('#tier').classList.add('in');
     if (isNewRecord) $('#new-record').hidden = false;
-    $('#result-extra').classList.add('in');
     $('#skip-hint').hidden = true;
+    $('#result-buttons').classList.remove('wait');
     this.animating = false;
-  },
-  fillExtras(res, best) {
-    const pct = res.maxPossible ? Math.floor(res.total / res.maxPossible * 100) : 0;
-    $('#achieve-text').textContent = `${I18n.fmt(res.total)} / ${I18n.fmt(res.maxPossible)} (${pct}%)`;
-    $('#st-acc').textContent = res.accuracy.toFixed(1) + '%';
-    $('#st-combo').textContent = String(res.maxPerfectCombo);
-    $('#st-tendency').textContent = tendencyText(res.avgDeltaMs) || '—';
-    $('#st-best').textContent = I18n.fmt(best);
-    $('#st-max').textContent = I18n.fmt(res.maxPossible);
-    const c = res.counts, tot = Math.max(1, res.totalNotes);
-    const parts = [['PERFECT', c.perfect, '--perfect'], ['GREAT', c.great, '--great'], ['GOOD', c.good, '--good'], ['MISS', c.miss, '--miss']];
-    $('#dist-bar').innerHTML = parts.map(([, v, col]) => `<i style="width:${(v / tot * 100).toFixed(2)}%;background:var(${col})"></i>`).join('');
-    $('#dist-legend').innerHTML = parts.map(([k, v, col]) => `<span style="--c:var(${col})">${k} ${v}</span>`).join('') +
-      (res.wrongHits ? `<span style="--c:var(--danger)">✕ ${res.wrongHits}</span>` : '');
-    $('#st-server-card').hidden = true;
-  },
-  showServer(stats) {
-    if (!stats || !stats.plays) return;
-    $('#st-server').textContent = t('serverStats', { plays: I18n.fmt(stats.plays), pct: stats.topPercent });
-    $('#st-server-card').hidden = false;
   },
 };
 
@@ -2319,7 +2240,7 @@ const Calibration = {
   },
   tap(ts) {
     if (!this.active) return;
-    AudioEngine.drum(9);
+    AudioEngine.drum(1);
     const tt = AudioEngine.audible(InputManager.normTs(ts));
     const k = Math.round((tt - this.origin) / this.beat);
     if (k < this.LEAD || k >= this.LEAD + this.TAPS || this.used.has(k)) return;
@@ -2373,23 +2294,15 @@ const UI = {
     $('#set-offset').value = d.offsetMs; $('#out-offset').textContent = (d.offsetMs > 0 ? '+' : '') + d.offsetMs + 'ms';
     $('#set-metronome').checked = d.metronome;
     $('#set-vibration').checked = d.vibration;
-    $$('#set-level button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === d.level)));
     Theme.apply();
   },
   initSettings() {
     $('#set-bpm').addEventListener('input', e => { Settings.set('bpm', +e.target.value); $('#out-bpm').textContent = e.target.value; });
     $('#set-volume').addEventListener('input', e => { const v = +e.target.value / 100; Settings.set('volume', v); AudioEngine.setVolume(v); $('#out-volume').textContent = e.target.value + '%'; });
-    $('#set-volume').addEventListener('change', () => AudioEngine.drum(9));
+    $('#set-volume').addEventListener('change', () => AudioEngine.drum(1));
     $('#set-offset').addEventListener('input', e => { Settings.set('offsetMs', +e.target.value); UI.syncSettings(); });
     $('#set-metronome').addEventListener('change', e => Settings.set('metronome', e.target.checked));
     $('#set-vibration').addEventListener('change', e => Settings.set('vibration', e.target.checked));
-    $('#set-level').addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
-      const prev = Settings.data.level, next = b.dataset.v;
-      // 난이도별 기본 BPM (쉬움 75): 사용자가 BPM 을 직접 바꾸지 않았다면 함께 조정
-      if (Settings.data.bpm === CONFIG.LEVEL_DEFAULT_BPM[prev]) Settings.set('bpm', CONFIG.LEVEL_DEFAULT_BPM[next]);
-      Settings.set('level', next); UI.syncSettings();
-    });
     $('#set-theme').addEventListener('click', e => { const b = e.target.closest('button'); if (b) Theme.set(b.dataset.v); });
     $('#btn-calib').addEventListener('click', () => Calibration.start());
     $('#btn-calib-cancel').addEventListener('click', () => Calibration.close());
@@ -2467,7 +2380,11 @@ const App = {
   },
 
   bind() {
-    $('#btn-start').addEventListener('click', () => this.start());
+    $$('.level-btn').forEach(b => b.addEventListener('click', () => {
+      Settings.set('level', b.dataset.level);
+      this.start({ seed: randomSeed(), bpm: Settings.data.bpm, level: b.dataset.level });
+    }));
+    $('#btn-challenge-start').addEventListener('click', () => this.start(Object.assign({}, this.challenge)));
     $('#btn-howto').addEventListener('click', () => { AudioEngine.tap(); UI.openModal('modal-howto'); });
     $('#btn-settings').addEventListener('click', () => { AudioEngine.tap(); UI.syncSettings(); UI.openModal('modal-settings'); });
     $('#btn-clear-challenge').addEventListener('click', () => {
@@ -2486,11 +2403,13 @@ const App = {
     $('#btn-retry').addEventListener('click', () => this.retry());
     $('#btn-home').addEventListener('click', () => this.home());
     $('#btn-share').addEventListener('click', () => this.share());
-    $('#btn-challenge').addEventListener('click', () => this.copyChallenge());
     $('#screen-result').addEventListener('pointerdown', () => ResultView.skip());
 
     document.addEventListener('keydown', e => this.onKey(e));
-    document.addEventListener('keyup', e => { const id = KEY_TO_PAD[e.code]; if (id) Renderer.setPressed(id, false); });
+    document.addEventListener('keyup', e => {
+      const id = this.game ? InputManager.keyToPad(e.code, this.game.layout) : null;
+      if (id != null) Renderer.setPressed(id, false);
+    });
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.pause(); });
     window.addEventListener('pagehide', () => this.pause());
     // 첫 상호작용 때 오디오 컨텍스트 준비 (iOS 잠금 해제)
@@ -2501,16 +2420,16 @@ const App = {
 
   onKey(e) {
     if (Calibration.active) {
-      if (KEY_TO_PAD[e.code] || e.code === 'Space') { e.preventDefault(); if (!e.repeat) Calibration.tap(e.timeStamp); }
+      if (KEY_POS[e.code] || e.code === 'Space') { e.preventDefault(); if (!e.repeat) Calibration.tap(e.timeStamp); }
       else if (e.code === 'Escape') Calibration.close();
       return;
     }
     const modal = UI.openModalEl();
     if (modal) { if (e.code === 'Escape') UI.closeModal(modal); return; }
     const inGame = this.state === 'countIn' || this.state === 'playing';
-    const pad = KEY_TO_PAD[e.code];
-    if (pad) {
-      if (inGame) { e.preventDefault(); if (!e.repeat) InputManager.press(pad, e.timeStamp, false); }
+    if (KEY_POS[e.code]) {
+      const pad = this.game ? InputManager.keyToPad(e.code, this.game.layout) : null;
+      if (inGame && pad != null) { e.preventDefault(); if (!e.repeat) InputManager.press(pad, e.timeStamp, false); }
       return;
     }
     const onControl = e.target && e.target.closest && e.target.closest('button, select, input, a');
@@ -2521,7 +2440,7 @@ const App = {
       if (inGame) this.pause(); else if (this.state === 'paused') this.resume();
     } else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
       if (onControl && e.code === 'Enter') return;   // 포커스된 버튼은 기본 동작
-      if (this.state === 'title') { e.preventDefault(); this.start(); }
+      if (this.state === 'title') { e.preventDefault(); this.start({ seed: randomSeed(), bpm: Settings.data.bpm, level: Settings.data.level }); }
       else if (this.state === 'result') { e.preventDefault(); if (ResultView.animating) ResultView.skip(); else this.retry(); }
       else if (this.state === 'paused') { e.preventDefault(); this.resume(); }
     }
@@ -2530,7 +2449,8 @@ const App = {
   onPad(id, perf, touch) {
     let res = null;
     if (this.game && (this.state === 'countIn' || this.state === 'playing')) res = this.game.onPad(id, perf);
-    AudioEngine.drum(id, res === 'perfect');
+    const color = this.game ? this.game.layout[id].color : id;
+    AudioEngine.drum(color, res === 'perfect');
     if (touch && Settings.data.vibration && navigator.vibrate) { try { navigator.vibrate(10); } catch (e) { /* noop */ } }
   },
 
@@ -2541,31 +2461,27 @@ const App = {
   },
 
   refreshTitle() {
-    const best = Storage.get('rmc.best.v1', 0);
+    const best = Storage.get('rmc.best.v2.' + Settings.data.level, 0);
     $('#title-best').hidden = !(best > 0);
-    $('#title-best-n').textContent = I18n.fmt(best || 0);
+    $('#title-best-n').textContent = `${I18n.fmt(best || 0)} · ${t(Settings.data.level)}`;
     const c = this.challenge;
     $('#challenge-card').hidden = !c;
     if (c) $('#challenge-info').textContent = t('challengeInfo', { seed: c.seed, bpm: c.bpm, level: t(c.level) });
+    $$('.level-btn').forEach(b => b.classList.toggle('last', b.dataset.level === Settings.data.level));
   },
   onLanguageChanged() {
     if (this.state === 'title') this.refreshTitle();
-    if (this.state === 'result' && this.lastResult && !ResultView.animating) {
-      ResultView.fillExtras(this.lastResult, Storage.get('rmc.best.v1', 0));
-      $('#result-meta').textContent = `#${this.lastResult.seed} · BPM ${this.lastResult.bpm} · ${t(this.lastResult.level)}`;
-      this.renderShare();
-    }
+    if (this.state === 'result' && this.lastResult) { ResultView.setMeta(this.lastResult); this.shareBlob = null; }
     if (Renderer.game) Renderer.hubScore.textContent = I18n.fmt(Renderer.displayScore || 0);
   },
 
   async start(params) {
-    if (this._starting) return;
+    if (this._starting || !params) return;
     this._starting = true;
     try {
       await AudioEngine.ensure();       // 사용자 탭 시점에 생성/resume (iOS)
       AudioEngine.setVolume(Settings.data.volume);
-      const p = params || (this.challenge ? Object.assign({}, this.challenge)
-        : { seed: randomSeed(), bpm: Settings.data.bpm, level: Settings.data.level });
+      const p = params;
       if (this.game) this.game.stop();
       this.game = new Game(p);
       Renderer.reset(this.game);
@@ -2577,8 +2493,11 @@ const App = {
     } finally { this._starting = false; }
   },
   retry() {
-    // 도전 모드면 같은 리듬, 아니면 새 리듬
-    this.start(this.challenge ? Object.assign({}, this.challenge) : null);
+    // 친구 도전 리듬이면 같은 리듬, 아니면 같은 난이도의 새 리듬
+    const last = this.game || this.lastResult;
+    const c = this.challenge;
+    if (c && last && last.seed === c.seed && last.level === c.level) this.start(Object.assign({}, c));
+    else this.start({ seed: randomSeed(), bpm: Settings.data.bpm, level: (last && last.level) || Settings.data.level });
   },
   home() {
     if (this.game) this.game.stop();
@@ -2629,65 +2548,38 @@ const App = {
     g.state = 'done';
     const res = g.buildResult();
     this.lastResult = res;
-    const prevBest = Storage.get('rmc.best.v1', 0) || 0;
+    const bestKey = 'rmc.best.v2.' + res.level;   // 난이도별 최고 기록
+    const prevBest = Storage.get(bestKey, 0) || 0;
     const isNew = res.total > prevBest && res.total > 0;
-    if (isNew) Storage.set('rmc.best.v1', res.total);
+    if (isNew) Storage.set(bestKey, res.total);
     this.state = 'result';
     this.releaseWakeLock();
     this.showScreen('result');
-    ResultView.play(res, isNew, Math.max(prevBest, res.total));
+    ResultView.play(res, isNew);
     this.renderShare();
-    Api.submit(res).then(stats => { if (this.lastResult === res) ResultView.showServer(stats); });
+    Api.submit(res);
   },
 
+  /** 저장용 이미지를 미리 만들어 둔다 (화면에는 표시하지 않음) */
   async renderShare() {
-    const res = this.lastResult; if (!res) return;
-    this.shareBlob = null;
+    const res = this.lastResult; if (!res) return null;
     const token = (this._shareToken = (this._shareToken || 0) + 1);
     try {
       const blob = await ResultCard.render(res);
-      if (token !== this._shareToken || !blob) return;
-      this.shareBlob = blob;
-      const img = $('#share-thumb');
-      if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
-      const url = URL.createObjectURL(blob);
-      img.src = url; img.dataset.url = url; img.alt = t('title') + ' ' + I18n.fmt(res.total);
-    } catch (e) { console.warn('share image failed', e); }
+      if (token === this._shareToken && blob) this.shareBlob = blob;
+      return blob;
+    } catch (e) { console.warn('result image failed', e); return null; }
   },
+  /** 이미지 저장: PNG 다운로드만 */
   async share() {
     const res = this.lastResult; if (!res) return;
-    if (!this.shareBlob) await this.renderShare();
-    const blob = this.shareBlob; if (!blob) return;
-    const file = new File([blob], 'rhythm-master-result.png', { type: 'image/png' });
-    const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
-    if (coarse && navigator.canShare && navigator.share) {
-      try {
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: t('title'), text: t('shareText', { score: I18n.fmt(res.total) }) + '\n' + this.challengeUrl(res) });
-          return;
-        }
-      } catch (e) { if (e && e.name === 'AbortError') return; }
-    }
+    const blob = this.shareBlob || await this.renderShare();
+    if (!blob) return;
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = 'rhythm-master-result.png';
+    a.href = URL.createObjectURL(blob); a.download = `rhythm-master-${res.seed}.png`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     UI.toast(t('imageSaved'));
-  },
-  async copyChallenge() {
-    const res = this.lastResult; if (!res) return;
-    const url = this.challengeUrl(res);
-    const text = t('shareText', { score: I18n.fmt(res.total) }) + '\n' + url;
-    let ok = false;
-    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); ok = true; } } catch (e) { /* fallthrough */ }
-    if (!ok) {
-      const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
-      ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
-      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-      ta.remove();
-    }
-    if (ok) UI.toast(t('linkCopied'));
-    else window.prompt(t('copyFail'), url);
   },
   async requestWakeLock() {
     try { if ('wakeLock' in navigator && !this.wakeLock) { this.wakeLock = await navigator.wakeLock.request('screen'); this.wakeLock.addEventListener('release', () => { this.wakeLock = null; }); } } catch (e) { /* 지원 안 함 */ }

@@ -30,9 +30,9 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 LEVELS = ("easy", "normal", "hard")
 BPM_MIN, BPM_MAX, BPM_STEP = 60, 140, 5
 SEED_MAX = 0xFFFFFFFF
-# 이론상 최대 점수(어려움·BPM 140에서 약 30만)보다 넉넉한 상한
-SCORE_MAX = 500_000
-COMBO_MAX = 200
+# 이론상 최대 점수(어려움·BPM 140에서 약 150만)보다 넉넉한 상한
+SCORE_MAX = 3_000_000
+COMBO_MAX = 1000
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS plays (
