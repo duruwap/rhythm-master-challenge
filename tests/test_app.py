@@ -38,7 +38,8 @@ def test_record_and_rank(client):
     r = play(client, score=5000)
     assert r.status_code == 201
     data = r.get_json()
-    assert data == {"plays": 2, "best": 5000, "rank": 1, "topPercent": 50}
+    assert data == {"plays": 2, "best": 5000, "rank": 1, "topPercent": 50,
+                    "levelPlays": 2, "levelRank": 1, "levelTopPercent": 50}
     data = play(client, score=10).get_json()
     assert data["rank"] == 3 and data["topPercent"] == 100
 
@@ -55,6 +56,15 @@ def test_record_and_rank(client):
 ])
 def test_validation(client, over):
     assert play(client, **over).status_code == 400
+
+
+def test_level_rank_spans_rhythms(client):
+    play(client, seed=1, score=100)
+    play(client, seed=2, score=300)
+    play(client, seed=3, score=200, level="hard")   # 다른 난이도는 제외
+    data = play(client, seed=4, score=200).get_json()
+    assert data["plays"] == 1 and data["topPercent"] == 100
+    assert data["levelPlays"] == 3 and data["levelRank"] == 2 and data["levelTopPercent"] == 67
 
 
 def test_non_json_body(client):

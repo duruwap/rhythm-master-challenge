@@ -136,7 +136,7 @@ button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-#app { position: fixed; inset: 0; }
+#app { position: fixed; inset: 0; z-index: 1; }
 .screen {
   position: absolute; inset: 0;
   display: none; flex-direction: column;
@@ -146,7 +146,7 @@ button { cursor: pointer; }
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* 배경 블롭 (시작/결과 화면) */
-.bg-blobs { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
+.bg-blobs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: var(--bg); }
 .bg-blobs i { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(70px); opacity: .45; animation: drift 18s ease-in-out infinite alternate; }
 :root[data-theme="dark"] .bg-blobs i { opacity: .28; }
 .bg-blobs i:nth-child(1) { background: var(--pad-7); left: -20vmax; top: -22vmax; }
@@ -441,20 +441,24 @@ kbd {
    결과 화면 — 4분할 색 배경 위에 등급·점수·라운드 등급·버튼만
    ========================================================================= */
 #screen-result { overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
-.result-bg { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; background: var(--pad-gap); z-index: -1; }
-.result-bg i:nth-child(1) { background: var(--pad-7); }
-.result-bg i:nth-child(2) { background: var(--pad-9); }
-.result-bg i:nth-child(3) { background: var(--pad-1); }
-.result-bg i:nth-child(4) { background: var(--pad-3); }
-.result-wrap { min-height: 100%; display: grid; place-items: center; padding: 20px 16px; }
+.result-wrap { min-height: 100%; display: grid; place-items: center; padding: 24px 18px; }
 .result-card {
-  width: min(440px, 100%); padding: 28px 22px 22px; border-radius: 32px; text-align: center;
+  width: min(460px, 100%); padding: 26px 24px 20px; border-radius: 30px; text-align: center;
   background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow-2);
-  -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
-:root[data-theme="dark"] .result-card { background: rgba(30, 27, 46, .82); }
-.result-meta { font-family: var(--font-num); font-size: 13px; font-weight: 800; color: var(--text-sub); letter-spacing: .06em; }
+.result-head { display: flex; align-items: center; gap: 12px; align-self: stretch; text-align: left; margin-bottom: 10px; }
+.mini-logo { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 34px; height: 34px; flex: none; }
+.mini-logo i { border-radius: 5px; }
+.mini-logo i:nth-child(1) { background: var(--pad-7); } .mini-logo i:nth-child(2) { background: var(--pad-9); }
+.mini-logo i:nth-child(3) { background: var(--pad-1); } .mini-logo i:nth-child(4) { background: var(--pad-3); }
+.result-head b { display: block; font-size: clamp(17px, 4.6vw, 21px); font-weight: 850; letter-spacing: -.02em; line-height: 1.2; }
+.result-head span { font-size: 13px; font-weight: 700; color: var(--text-sub); }
+.result-meta { font-family: var(--font-num); font-size: 12.5px; font-weight: 800; color: var(--text-sub); letter-spacing: .06em; }
+.rank-line { font-size: 14.5px; font-weight: 800; color: var(--text-sub); animation: fadeIn .3s ease-out; }
+.rank-line b { color: var(--accent); font-size: 1.12em; }
+.divider { align-self: stretch; height: 1px; background: var(--line); margin: 12px 0 2px; }
 .tier {
   font-size: clamp(40px, 13vw, 64px); font-weight: 900; line-height: 1.1; letter-spacing: -.02em; margin-top: 6px;
   min-height: 1.1em; opacity: 0; transform: scale(.7);
@@ -666,14 +670,18 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
 
   <!-- ================= 결과 화면 ================= -->
   <section id="screen-result" class="screen" aria-labelledby="result-h">
-    <div class="result-bg" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="result-wrap">
       <div class="result-card">
+        <div class="result-head">
+          <div class="mini-logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div><b id="result-h" data-i18n="title"></b><span id="result-date"></span></div>
+        </div>
         <div class="result-meta" id="result-meta"></div>
-        <h2 class="sr-only" id="result-h">RESULT</h2>
         <div class="tier" id="tier"></div>
         <div class="total-num num" id="total-num">0</div>
         <div class="new-record" id="new-record" hidden data-i18n="newRecord"></div>
+        <div class="rank-line" id="rank-line" hidden></div>
+        <div class="divider"></div>
         <div class="round-badges" id="round-badges"></div>
         <div class="skip-hint" id="skip-hint" data-i18n="tapToSkip"></div>
         <div class="result-buttons" id="result-buttons">
@@ -1186,10 +1194,10 @@ const TIER_NAMES = {
   ja: { BRONZE: 'ブロンズ', SILVER: 'シルバー', GOLD: 'ゴールド', PLATINUM: 'プラチナ', DIAMOND: 'ダイヤ', CHALLENGER: 'チャレンジャー' },
 };
 Object.keys(TIER_NAMES).forEach(l => Object.keys(TIER_NAMES[l]).forEach(k => { I18N[l]['tier' + k] = TIER_NAMES[l][k]; }));
-Object.assign(I18N.ko, { saveImage: '이미지 저장' });
-Object.assign(I18N.en, { saveImage: 'Save Image' });
-Object.assign(I18N.zh, { saveImage: '保存图片' });
-Object.assign(I18N.ja, { saveImage: '画像を保存' });
+Object.assign(I18N.ko, { saveImage: '이미지 저장', rankLevel: '{level} 도전자 중 상위 <b>{pct}%</b>', rankRhythm: '같은 리듬 도전자 중 상위 <b>{pct}%</b>' });
+Object.assign(I18N.en, { saveImage: 'Save Image', rankLevel: 'Top <b>{pct}%</b> of {level} players', rankRhythm: 'Top <b>{pct}%</b> on this rhythm' });
+Object.assign(I18N.zh, { saveImage: '保存图片', rankLevel: '{level}难度挑战者中前 <b>{pct}%</b>', rankRhythm: '同节奏挑战者中前 <b>{pct}%</b>' });
+Object.assign(I18N.ja, { saveImage: '画像を保存', rankLevel: '{level}の挑戦者で上位 <b>{pct}%</b>', rankRhythm: '同じリズムの挑戦者で上位 <b>{pct}%</b>' });
 Object.assign(I18N.ko, {
   tagline: '도형의 꼭짓점마다 톡! 폴리리듬 챌린지',
   pcHint: 'PC: Q · W · A · S 키로 플레이 (동시에 여러 개 OK)',
@@ -2087,51 +2095,68 @@ const ResultCard = {
     const tierName = t('tier' + tier);
     const site = /^https?:$/.test(location.protocol) ? location.host : 'rhythm-master';
     const meta = `${t(res.level)} · BPM ${res.bpm}`;
+    const date = new Intl.DateTimeFormat(I18n.lang === 'zh' ? 'zh-CN' : I18n.lang, { dateStyle: 'medium' }).format(new Date(res.playedAt));
     const code = t('challengeCode', { seed: res.seed });
-    await this.waitFonts([t('title'), tierName, meta, code, '0123456789,#·RPGoX']);
+    await this.waitFonts([t('title'), tierName, meta, date, code, site, ResultView.rankText(res).replace(/<[^>]+>/g, ''), '0123456789,#·RPGoX%']);
 
-    // 배경: 패드 4색 4분할
+    // 배경: 네 모서리에서 번지는 파스텔 4색 + 도트 패턴
     const cols = ['--pad-7', '--pad-9', '--pad-1', '--pad-3'].map(C);
-    ctx.fillStyle = C('--pad-gap') || '#999'; ctx.fillRect(0, 0, W, H);
-    const g = 3;
-    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([i, j], k) => { ctx.fillStyle = cols[k]; ctx.fillRect(i * (W / 2 + g / 2), j * (H / 2 + g / 2), W / 2 - g / 2, H / 2 - g / 2); });
-    // 가운데 카드
-    const cx0 = 110, cy0 = 230, cw = W - 220, ch = 890;
+    ctx.fillStyle = C('--bg'); ctx.fillRect(0, 0, W, H);
+    [[0, 0], [W, 0], [0, H], [W, H]].forEach(([x, y], k) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 900);
+      g.addColorStop(0, hexA(cols[k], dark ? 0.5 : 0.9)); g.addColorStop(1, hexA(cols[k], 0));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    });
+    ctx.fillStyle = dark ? 'rgba(255,255,255,.05)' : 'rgba(43,43,58,.06)';
+    for (let y = 22; y < H; y += 44) for (let x = 22; x < W; x += 44) { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); }
+
+    // 카드
+    const cx0 = 90, cy0 = 110, cw = W - 180, ch = 1130;
     ctx.save();
-    ctx.shadowColor = 'rgba(40,20,60,.25)'; ctx.shadowBlur = 60; ctx.shadowOffsetY = 18;
+    ctx.shadowColor = dark ? 'rgba(0,0,0,.5)' : 'rgba(60,40,80,.18)'; ctx.shadowBlur = 70; ctx.shadowOffsetY = 24;
     this.rr(ctx, cx0, cy0, cw, ch, 64);
-    ctx.fillStyle = dark ? 'rgba(30,27,46,.92)' : 'rgba(255,255,255,.92)'; ctx.fill();
+    ctx.fillStyle = dark ? 'rgba(34,30,54,.93)' : 'rgba(255,255,255,.92)'; ctx.fill();
     ctx.restore();
     const text = dark ? '#F3F0FF' : '#2B2B3A', sub = dark ? '#B8B3D1' : '#6B6B80';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = text; this.fit(ctx, t('title'), 800, 46, cw - 120, fam); ctx.fillText(t('title'), W / 2, cy0 + 100);
-    ctx.fillStyle = sub; ctx.font = `700 30px ${fam}`; ctx.fillText(meta, W / 2, cy0 + 150);
+
+    // 헤더: 로고 + 제목 + 날짜
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([i, j], k) => { this.rr(ctx, cx0 + 64 + i * 40, cy0 + 70 + j * 40, 34, 34, 9); ctx.fillStyle = cols[k]; ctx.fill(); });
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = text; this.fit(ctx, t('title'), 800, 52, cw - 260, fam); ctx.fillText(t('title'), cx0 + 170, cy0 + 116);
+    ctx.fillStyle = sub; ctx.font = `700 28px ${fam}`; ctx.fillText(date, cx0 + 172, cy0 + 156);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = sub; ctx.font = `800 30px ${fam}`; ctx.fillText(meta, W / 2, cy0 + 268);
     // 총 등급
-    const ts = this.fit(ctx, tierName, 900, 150, cw - 120, fam);
+    const ts = this.fit(ctx, tierName, 900, 140, cw - 120, fam);
     if (tier === 'CHALLENGER') {
       const tw = ctx.measureText(tierName).width;
       const gr = ctx.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
       gr.addColorStop(0, '#FF4D6D'); gr.addColorStop(0.5, '#9B5CFF'); gr.addColorStop(1, '#2FB4FF');
       ctx.fillStyle = gr;
     } else ctx.fillStyle = TIER_COLORS[dark ? 'dark' : 'light'][tier];
-    ctx.fillText(tierName, W / 2, cy0 + 190 + ts);
+    ctx.fillText(tierName, W / 2, cy0 + 300 + ts);
     // 점수
     ctx.fillStyle = text; this.fit(ctx, I18n.fmt(res.total), 900, 150, cw - 120, numFam);
-    ctx.fillText(I18n.fmt(res.total), W / 2, cy0 + 530);
+    ctx.fillText(I18n.fmt(res.total), W / 2, cy0 + 640);
+    const rank = ResultView.rankText(res).replace(/<[^>]+>/g, '');
+    if (rank) { ctx.fillStyle = C('--accent'); this.fit(ctx, rank, 800, 34, cw - 120, fam); ctx.fillText(rank, W / 2, cy0 + 728); }
+    // 구분선
+    ctx.fillStyle = dark ? 'rgba(255,255,255,.1)' : 'rgba(43,43,58,.1)'; ctx.fillRect(cx0 + 64, cy0 + 768, cw - 128, 2);
     // 라운드 등급 8개
     const gradeCol = { PERFECT: C('--perfect'), GREAT: C('--great'), GOOD: C('--good'), BREAK: C('--miss') };
     const short = { PERFECT: 'P', GREAT: 'G', GOOD: 'Go', BREAK: 'X' };
-    const bs = (cw - 100) / 8, by = cy0 + 660;
+    const bs = (cw - 110) / 8, by = cy0 + 858;
     res.roundGrades.forEach((gname, i) => {
-      const x = cx0 + 50 + bs * (i + 0.5);
-      ctx.beginPath(); ctx.arc(x, by, bs * 0.4, 0, Math.PI * 2); ctx.fillStyle = gradeCol[gname]; ctx.fill();
+      const x = cx0 + 55 + bs * (i + 0.5);
+      ctx.beginPath(); ctx.arc(x, by, bs * 0.38, 0, Math.PI * 2); ctx.fillStyle = gradeCol[gname]; ctx.fill();
       ctx.fillStyle = gname === 'PERFECT' || gname === 'GREAT' ? '#1A1628' : '#fff';
-      ctx.font = `900 ${Math.round(bs * 0.32)}px ${numFam}`; ctx.fillText(short[gname], x, by + bs * 0.11);
-      ctx.fillStyle = sub; ctx.font = `800 22px ${numFam}`; ctx.fillText('R' + (i + 1), x, by + bs * 0.4 + 36);
+      ctx.font = `900 ${Math.round(bs * 0.3)}px ${numFam}`; ctx.fillText(short[gname], x, by + bs * 0.105);
+      ctx.fillStyle = sub; ctx.font = `800 22px ${numFam}`; ctx.fillText('R' + (i + 1), x, by + bs * 0.38 + 34);
     });
-    ctx.fillStyle = sub; this.fit(ctx, code, 700, 28, cw - 120, fam); ctx.fillText(code, W / 2, cy0 + ch - 60);
-    // 하단 사이트
-    ctx.fillStyle = 'rgba(43,43,58,.75)'; ctx.font = `800 30px ${numFam}`; ctx.fillText(site, W / 2, H - 70);
+    // 하단: 사이트 · 도전 코드
+    ctx.fillStyle = sub; this.fit(ctx, site, 700, 28, cw - 120, fam); ctx.fillText(site, W / 2, cy0 + ch - 88);
+    ctx.fillStyle = text; this.fit(ctx, code, 800, 30, cw - 120, fam); ctx.fillText(code, W / 2, cy0 + ch - 46);
     return new Promise(r => cv.toBlob(b => r(b), 'image/png'));
   },
 };
@@ -2177,10 +2202,24 @@ const ResultView = {
   },
   setMeta(res) {
     $('#result-meta').textContent = `${t(res.level)} · BPM ${res.bpm} · #${res.seed}`;
+    $('#result-date').textContent = new Intl.DateTimeFormat(I18n.lang === 'zh' ? 'zh-CN' : I18n.lang, { dateStyle: 'medium' }).format(new Date(res.playedAt));
     const tier = tierOf(res);
     const el = $('#tier');
     el.className = 'tier tier-' + tier + (el.classList.contains('in') ? ' in' : '');
     el.textContent = t('tier' + tier);
+  },
+  /** 서버 순위(상위 %) 표시. 친구 도전 리듬이면 같은 리듬 기준, 아니면 같은 난이도·BPM 기준 */
+  rankText(res) {
+    const st = res.stats;
+    if (!st) return '';
+    if (res.challenge && st.plays > 1) return t('rankRhythm', { pct: st.topPercent });
+    if (st.levelTopPercent) return t('rankLevel', { pct: st.levelTopPercent, level: t(res.level) });
+    return '';
+  },
+  showRank(res) {
+    const el = $('#rank-line');
+    const html = this.rankText(res);
+    el.innerHTML = html; el.hidden = !html || this.animating;
   },
   async play(res, isNewRecord) {
     this.skipped = reducedMotion(); this.animating = true;
@@ -2189,6 +2228,7 @@ const ResultView = {
     this.setMeta(res);
     $('#total-num').textContent = '0';
     $('#new-record').hidden = true;
+    $('#rank-line').hidden = true;
     $('#skip-hint').hidden = false;
     $('#result-buttons').classList.add('wait');
     const short = { PERFECT: 'P', GREAT: 'G', GOOD: 'Go', BREAK: 'X' };
@@ -2205,6 +2245,7 @@ const ResultView = {
     $('#skip-hint').hidden = true;
     $('#result-buttons').classList.remove('wait');
     this.animating = false;
+    this.showRank(res);
   },
 };
 
@@ -2471,7 +2512,7 @@ const App = {
   },
   onLanguageChanged() {
     if (this.state === 'title') this.refreshTitle();
-    if (this.state === 'result' && this.lastResult) { ResultView.setMeta(this.lastResult); this.shareBlob = null; }
+    if (this.state === 'result' && this.lastResult) { ResultView.setMeta(this.lastResult); ResultView.showRank(this.lastResult); this.shareBlob = null; }
     if (Renderer.game) Renderer.hubScore.textContent = I18n.fmt(Renderer.displayScore || 0);
   },
 
@@ -2555,9 +2596,15 @@ const App = {
     this.state = 'result';
     this.releaseWakeLock();
     this.showScreen('result');
+    res.challenge = !!(this.challenge && this.challenge.seed === res.seed && this.challenge.level === res.level);
     ResultView.play(res, isNew);
     this.renderShare();
-    Api.submit(res);
+    Api.submit(res).then(stats => {
+      if (!stats || this.lastResult !== res) return;
+      res.stats = stats;
+      ResultView.showRank(res);
+      this.shareBlob = null; this.renderShare();   // 이미지에도 순위 반영
+    });
   },
 
   /** 저장용 이미지를 미리 만들어 둔다 (화면에는 표시하지 않음) */

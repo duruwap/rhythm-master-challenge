@@ -5,7 +5,7 @@
 
 * 게임 페이지와 정적 파일(자체 호스팅 Pretendard 폰트) 제공
 * 같은 리듬(seed·BPM·난이도) 도전 기록 집계 API (SQLite)
-  - POST /api/scores  : 한 판의 결과를 기록하고 해당 리듬에서의 순위를 돌려준다
+  - POST /api/scores  : 한 판의 결과를 기록하고 순위(같은 리듬 / 같은 난이도·BPM)를 돌려준다
   - GET  /api/scores  : 해당 리듬의 도전 횟수 / 최고 점수
 * GET /api/health    : 헬스 체크
 
@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS plays (
     created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_plays_rhythm ON plays (seed, bpm, level, score);
+CREATE INDEX IF NOT EXISTS idx_plays_level ON plays (level, bpm, score);
 """
 
 
@@ -230,7 +231,16 @@ def create_app(test_config: dict | None = None) -> Flask:
         ).fetchone()[0]
         rank = int(higher) + 1
         top_percent = max(1, math.ceil(rank / plays * 100))
-        return jsonify(plays=plays, best=best, rank=rank, topPercent=top_percent), 201
+        # 같은 난이도·BPM 전체(모든 리듬) 기준 순위 — 매 판 새 리듬이라 이쪽이 주로 쓰인다
+        lv = db.execute(
+            "SELECT COUNT(*) AS n, SUM(score > ?) AS higher FROM plays WHERE level=? AND bpm=?",
+            (score, level, bpm),
+        ).fetchone()
+        level_plays = int(lv["n"])
+        level_rank = int(lv["higher"] or 0) + 1
+        level_top = max(1, math.ceil(level_rank / level_plays * 100))
+        return jsonify(plays=plays, best=best, rank=rank, topPercent=top_percent,
+                       levelPlays=level_plays, levelRank=level_rank, levelTopPercent=level_top), 201
 
     @app.errorhandler(413)
     def too_large(_e):
