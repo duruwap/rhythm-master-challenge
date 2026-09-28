@@ -306,7 +306,7 @@ kbd {
 }
 .shape-box.swap { animation: shapeIn .5s var(--ease-out-back); }
 @keyframes shapeIn { from { scale: .5; rotate: -30deg; opacity: 0; } to { scale: 1; rotate: 0deg; opacity: 1; } }
-.shape-box.shake { animation: shake .16s linear; }
+.shape-box svg.shake { animation: shake .16s linear; }
 .shape-box svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .shape-fill { fill: rgba(255, 255, 255, .26); stroke: none; }
 :root[data-theme="dark"] .shape-fill { fill: rgba(255, 255, 255, .14); }
@@ -402,7 +402,20 @@ kbd {
   background: var(--surface); color: var(--text); box-shadow: var(--shadow-2);
   animation: bannerIn .6s ease-out forwards;
 }
-.banner.round { bottom: calc(clamp(86px, 17vmin, 136px) / 2 + 52px); }
+.banner.round { top: calc(clamp(86px, 17vmin, 136px) / 2 + 64px); }
+/* 라운드 시작 전 4박 카운트 동안 크게 보이는 ROUND n */
+.round-title {
+  position: absolute; left: 0; bottom: calc(clamp(86px, 17vmin, 136px) / 2 + 14px); transform: translateX(-50%);
+  display: flex; align-items: baseline; gap: 8px; white-space: nowrap;
+  padding: 10px 26px 12px; border-radius: 999px;
+  background: var(--glass); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-2); color: var(--text);
+  animation: roundIn .45s var(--ease-out-back);
+}
+.round-title small { font-family: var(--font-num); font-weight: 900; font-size: clamp(14px, 3.4vmin, 24px); letter-spacing: .12em; color: var(--text-sub); }
+.round-title b { font-weight: 900; font-size: clamp(40px, 11vmin, 88px); line-height: 1; }
+.round-title span { font-weight: 800; font-size: clamp(16px, 3.6vmin, 28px); color: var(--text-sub); }
+@keyframes roundIn { from { opacity: 0; transform: translateX(-50%) scale(.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
 .banner.callout { top: calc(clamp(86px, 17vmin, 136px) / 2 + 40px); font-size: clamp(14px, 3.2vmin, 22px); padding: 8px 16px; }
 .banner.big { font-size: clamp(26px, 7vmin, 52px); padding: 14px 28px; bottom: auto; top: 0; transform: translate(-50%, -50%); animation-duration: 1.4s; }
 .banner.perfect { background: linear-gradient(135deg, #FFE27A, #F5B700); color: #2B2100; }
@@ -618,7 +631,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
             <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="17.5" height="36" rx="5" fill="var(--pad-7)"/><rect x="20.5" y="2" width="17.5" height="36" rx="5" fill="var(--pad-9)"/></svg>
             <b data-i18n="easy"></b><small data-i18n="easyDesc"></small></button>
           <button class="level-btn" type="button" data-level="normal">
-            <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 20 L20 2 L2 2 L2 30.4 Z" fill="var(--pad-7)"/><path d="M20 20 L20 2 L38 2 L38 30.4 Z" fill="var(--pad-9)"/><path d="M20 20 L2 30.4 L2 38 L38 38 L38 30.4 Z" fill="var(--pad-1)"/><circle cx="20" cy="20" r="4" fill="var(--text)"/></svg>
+            <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="17.5" height="17.5" rx="5" fill="var(--pad-7)"/><rect x="20.5" y="2" width="17.5" height="17.5" rx="5" fill="var(--pad-9)"/><rect x="2" y="20.5" width="36" height="17.5" rx="5" fill="var(--pad-1)"/></svg>
             <b data-i18n="normal"></b><small data-i18n="normalDesc"></small></button>
           <button class="level-btn" type="button" data-level="hard">
             <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="17.5" height="17.5" rx="5" fill="var(--pad-7)"/><rect x="20.5" y="2" width="17.5" height="17.5" rx="5" fill="var(--pad-9)"/><rect x="2" y="20.5" width="17.5" height="17.5" rx="5" fill="var(--pad-1)"/><rect x="20.5" y="20.5" width="17.5" height="17.5" rx="5" fill="var(--pad-3)"/></svg>
@@ -652,6 +665,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
       </button>
       <div class="float-layer" id="float-layer" aria-live="polite">
         <div class="combo-chip" id="combo-chip" hidden></div>
+        <div class="round-title" id="round-title" hidden><small>ROUND</small><b class="num" id="round-title-n">1</b><span class="num" id="round-title-of">/8</span></div>
       </div>
     </div>
     <div class="overlay" id="pause-overlay" hidden>
@@ -779,29 +793,28 @@ const CONFIG = {
   TOTAL_ROUNDS: 8,
   BARS_PER_ROUND: 2,          // 같은 리듬을 2마디(8박) 반복
   BEATS_PER_BAR: 4,
-  PREP_SECONDS: 3,            // 라운드 시작 전 쉬는 시간 (마지막 4박은 카운트)
-  COUNT_IN_BEATS: 4,
+  COUNT_IN_BEATS: 4,          // 라운드마다 4박 카운트(ROUND 표시) 후 시작
   DEFAULT_BPM: 90,
   BPM_MIN: 60, BPM_MAX: 140,
   OFFSET_MAX_MS: 300,
   MAX_VERTICES: 8,
-  /* 난이도별 화면 분할. 조각 = 화면 중심에서 뻗은 두 반직선 사이 (각도: 위=0°, 시계 방향)
-     keys: 이 조각을 누르는 키보드 위치(TL/TR/BL/BR = Q/W/A/S) */
+  /* 난이도별 화면 분할: 사각형 영역 [x0, y0, x1, y1] (화면 비율 0~1)
+     keys: 이 영역을 누르는 키보드 위치(TL/TR/BL/BR = Q/W/A/S) */
   LAYOUTS: {
     easy: [
-      { a0: 180, a1: 360, color: 0, keys: ['TL', 'BL'] },
-      { a0: 0, a1: 180, color: 1, keys: ['TR', 'BR'] },
+      { rect: [0, 0, 0.5, 1], color: 0, keys: ['TL', 'BL'] },
+      { rect: [0.5, 0, 1, 1], color: 1, keys: ['TR', 'BR'] },
     ],
-    normal: [
-      { a0: 240, a1: 360, color: 0, keys: ['TL'] },
-      { a0: 0, a1: 120, color: 1, keys: ['TR'] },
-      { a0: 120, a1: 240, color: 2, keys: ['BL', 'BR'] },
+    normal: [   // 위 2칸 + 아래 1칸(가로 전체)
+      { rect: [0, 0, 0.5, 0.5], color: 0, keys: ['TL'] },
+      { rect: [0.5, 0, 1, 0.5], color: 1, keys: ['TR'] },
+      { rect: [0, 0.5, 1, 1], color: 2, keys: ['BL', 'BR'] },
     ],
     hard: [
-      { a0: 270, a1: 360, color: 0, keys: ['TL'] },
-      { a0: 0, a1: 90, color: 1, keys: ['TR'] },
-      { a0: 180, a1: 270, color: 2, keys: ['BL'] },
-      { a0: 90, a1: 180, color: 3, keys: ['BR'] },
+      { rect: [0, 0, 0.5, 0.5], color: 0, keys: ['TL'] },
+      { rect: [0.5, 0, 1, 0.5], color: 1, keys: ['TR'] },
+      { rect: [0, 0.5, 0.5, 1], color: 2, keys: ['BL'] },
+      { rect: [0.5, 0.5, 1, 1], color: 3, keys: ['BR'] },
     ],
   },
   /* 라운드별 도형(꼭짓점 수 = 한 마디에 치는 횟수) 후보. 패드 수만큼 서로 다른 값을 시드로 뽑는다.
@@ -1203,7 +1216,7 @@ Object.assign(I18N.ko, {
   pcHint: 'PC: Q · W · A · S 키로 플레이 (동시에 여러 개 OK)',
   how1: '공이 도형 둘레를 돌아요. 꼭짓점에 닿는 순간 그 패드를 눌러요!',
   how2: '모든 도형은 한 마디(4박)에 한 바퀴 — ●는 1번, ━는 2번, △는 3번, □는 4번. 서로 엇갈리는 박자가 폴리리듬이에요',
-  how3: '라운드 시작 전 3초 동안 도형을 확인하고, 4·3·2·1 카운트에 맞춰 시작! 같은 리듬을 2마디 반복해요',
+  how3: '라운드마다 4·3·2·1 카운트 동안 새 도형을 확인하고 시작! 같은 리듬을 2마디 반복해요',
   how4: 'PC는 Q · W · A · S — 패드 위치 그대로 (여러 개 동시에 눌러도 돼요)',
   how5: '가운데 동그라미를 누르면 일시정지해요',
   easyDesc: '패드 2개', normalDesc: '패드 3개', hardDesc: '패드 4개', challengeStart: '도전하기',
@@ -1213,7 +1226,7 @@ Object.assign(I18N.en, {
   pcHint: 'PC: Play with Q · W · A · S (press several at once)',
   how1: 'A ball travels around each shape. Tap that pad the moment it hits a corner!',
   how2: 'Every shape takes one bar (4 beats) per lap — ● 1 hit, ━ 2, △ 3, □ 4. Shapes crossing each other = polyrhythm',
-  how3: 'Before each round you get 3 seconds to read the shapes, then go on the 4·3·2·1 count. Same rhythm for 2 bars!',
+  how3: 'Each round starts after a 4·3·2·1 count — read the new shapes, then go. Same rhythm for 2 bars!',
   how4: 'On PC, Q · W · A · S — same layout as the pads (press several at once)',
   how5: 'Tap the center circle to pause',
   easyDesc: '2 pads', normalDesc: '3 pads', hardDesc: '4 pads', challengeStart: 'Play',
@@ -1223,7 +1236,7 @@ Object.assign(I18N.zh, {
   pcHint: '电脑：使用 Q · W · A · S 键（可同时按多个）',
   how1: '小球沿着图形移动，碰到顶点的瞬间点击该鼓垫！',
   how2: '每个图形一小节（4拍）转一圈 — ● 1 次，━ 2 次，△ 3 次，□ 4 次。不同图形交错就是多节奏',
-  how3: '每回合开始前有 3 秒查看图形，跟着 4·3·2·1 开始！同样的节奏重复 2 小节',
+  how3: '每回合在 4·3·2·1 倒数期间查看新图形，然后开始！同样的节奏重复 2 小节',
   how4: '电脑用 Q · W · A · S — 与鼓垫位置一致（可同时按多个）',
   how5: '点击中间的圆圈暂停',
   easyDesc: '2 个鼓垫', normalDesc: '3 个鼓垫', hardDesc: '4 个鼓垫', challengeStart: '挑战',
@@ -1233,7 +1246,7 @@ Object.assign(I18N.ja, {
   pcHint: 'PC：Q・W・A・S キーでプレイ（同時押しOK）',
   how1: 'ボールが図形のふちを回るよ。角に当たった瞬間にそのパッドをタップ！',
   how2: 'どの図形も1小節（4拍）で1周 — ●は1回、━は2回、△は3回、□は4回。ずれて重なるリズムがポリリズム',
-  how3: 'ラウンド開始前の3秒で図形を確認、4・3・2・1のカウントでスタート！同じリズムを2小節くり返すよ',
+  how3: 'ラウンドごとに4・3・2・1のカウント中に新しい図形を確認してスタート！同じリズムを2小節くり返すよ',
   how4: 'PCは Q・W・A・S — パッドと同じ配置（同時押しOK）',
   how5: '真ん中の丸をタップで一時停止',
   easyDesc: 'パッド2つ', normalDesc: 'パッド3つ', hardDesc: 'パッド4つ', challengeStart: '挑戦する',
@@ -1437,7 +1450,7 @@ class ScoreKeeper {
 
 /* =========================================================================
    App-level Game (타임라인·스케줄러·판정 연결)
-   라운드 r = [준비 prepDur 초 (마지막 4박 카운트)] + [2마디 = 8박 연주]
+   라운드 r = [4박 카운트 (ROUND n 표시)] + [2마디 = 8박 연주]
    ========================================================================= */
 class Game {
   constructor({ seed, bpm, level }) {
@@ -1446,7 +1459,7 @@ class Game {
     this.beatDur = 60 / bpm;
     this.barBeats = CONFIG.BEATS_PER_BAR;
     this.roundBeats = CONFIG.BEATS_PER_BAR * CONFIG.BARS_PER_ROUND;
-    this.prepDur = Math.max(CONFIG.PREP_SECONDS, CONFIG.COUNT_IN_BEATS * this.beatDur);
+    this.prepDur = CONFIG.COUNT_IN_BEATS * this.beatDur;
     this.segDur = this.prepDur + this.roundBeats * this.beatDur;
     this.rounds = PatternGenerator.generate(seed, level);
     this.notes = [];
@@ -1632,25 +1645,6 @@ class Game {
    7. Renderer — rAF 루프, 화면 분할(clip-path), 도형·공·꼭짓점 두근, 중앙 허브
    ========================================================================= */
 const KEY_LABEL = { TL: 'Q', TR: 'W', BL: 'A', BR: 'S' };
-/** 화면 중심에서 a0°→a1°(위=0°, 시계 방향) 사이 조각의 다각형 꼭짓점 */
-function slicePolygon(cx, cy, w, h, a0, a1) {
-  const exit = a => {
-    const rad = a * Math.PI / 180, dx = Math.sin(rad), dy = -Math.cos(rad);
-    let t = Infinity;
-    if (dx > 1e-9) t = Math.min(t, (w - cx) / dx);
-    if (dx < -1e-9) t = Math.min(t, -cx / dx);
-    if (dy > 1e-9) t = Math.min(t, (h - cy) / dy);
-    if (dy < -1e-9) t = Math.min(t, -cy / dy);
-    return [cx + dx * t, cy + dy * t];
-  };
-  const angOf = (x, y) => (Math.atan2(x - cx, -(y - cy)) * 180 / Math.PI + 360) % 360;
-  const span = a1 - a0;
-  const corners = [[0, 0], [w, 0], [w, h], [0, h]]
-    .map(c => ({ c, rel: (angOf(c[0], c[1]) - a0 + 360) % 360 }))
-    .filter(o => o.rel > 1e-6 && o.rel < span - 1e-6)
-    .sort((a, b) => a.rel - b.rel).map(o => o.c);
-  return { poly: [[cx, cy], exit(a0), ...corners, exit(a1 % 360)], exit };
-}
 function segDist(px, py, [x1, y1], [x2, y2]) {
   const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
   const u = L ? clamp(((px - x1) * dx + (py - y1) * dy) / L, 0, 1) : 0;
@@ -1704,6 +1698,7 @@ const Renderer = {
     this.progLen = 2 * Math.PI * 36;
     this.hubScore = $('#hub-score'); this.hubRound = $('#hub-round'); this.hubCount = $('#hub-count');
     this.float = $('#float-layer'); this.comboChip = $('#combo-chip');
+    this.roundTitle = $('#round-title'); this.roundTitleN = $('#round-title-n'); this.roundTitleOf = $('#round-title-of');
     const relayout = () => this.layoutPads();
     if (window.ResizeObserver) new ResizeObserver(relayout).observe($('.stage'));
     window.addEventListener('resize', relayout);
@@ -1747,27 +1742,45 @@ const Renderer = {
     const hubR = ($('#hub').offsetWidth || 100) / 2 + 12;
     const safe = this.safeInsets();
     const metaH = 30;   // 도형 아래 라벨 공간
-    const dividers = new Set();
+    const dividers = new Map();
     const fits = this.pads.map(p => {
-      const { poly, exit } = slicePolygon(cx, cy, w, h, p.def.a0, p.def.a1);
-      dividers.add(p.def.a0 % 360); dividers.add(p.def.a1 % 360);
+      const [rx0, ry0, rx1, ry1] = p.def.rect;
+      const X0 = rx0 * w, Y0 = ry0 * h, X1 = rx1 * w, Y1 = ry1 * h;
+      const poly = [[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]];
+      // 화면 가장자리가 아닌 변 = 패드 사이 구분선
+      [[X0, Y0, X1, Y0], [X1, Y0, X1, Y1], [X0, Y1, X1, Y1], [X0, Y0, X0, Y1]].forEach(([a, b, c, d]) => {
+        const outer = (a === c && (a <= 0 || a >= w)) || (b === d && (b <= 0 || b >= h));
+        if (!outer) dividers.set([a, b, c, d].map(v => v.toFixed(1)).join(','), [a, b, c, d]);
+      });
       p.el.style.setProperty('--clip', 'polygon(' + poly.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(',') + ')');
       // 조각 안에서 가장 큰 원이 들어가는 점(허브·안전 영역 제외)을 격자 탐색
       const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
       const bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys);
       const steps = 36;
       let best = { x: (bx0 + bx1) / 2, y: (by0 + by1) / 2, r: 0 };
+      const samples = [];
       for (let i = 1; i < steps; i++) for (let j = 1; j < steps; j++) {
         const x = bx0 + (bx1 - bx0) * i / steps, y = by0 + (by1 - by0) * j / steps;
         if (!pointInPoly(x, y, poly)) continue;
         let d = Math.min(x - safe.l, w - safe.r - x, y - safe.t, h - safe.b - y - metaH, Math.hypot(x - cx, y - cy) - hubR);
         for (let k = 0; k < poly.length; k++) d = Math.min(d, segDist(x, y, poly[k], poly[(k + 1) % poly.length]));
+        samples.push({ x, y, r: d, dc: Math.hypot(x - (bx0 + bx1) / 2, y - (by0 + by1) / 2) });
         if (d > best.r) best = { x, y, r: d };
       }
-      return { p, best, exit };
+      return { p, best, samples };
     });
-    // 모든 패드의 도형 크기를 같게 (가장 좁은 조각 기준)
-    const r = Math.min(...fits.map(f => f.best.r));
+    // 모든 패드의 도형 크기를 같게 (가장 좁은 조각 기준). 각 조각에서는 그 크기가 들어가는 자리 중 영역 중심에 가장 가까운 곳
+    // 가운데 세로줄에 놓을 수 있는 크기 — 최대 크기의 75% 이상이면 조금 작아지더라도 가운데 배치를 우선
+    const rPad = fits.map(f => {
+      const [rx0, , rx1] = f.p.def.rect, midX = (rx0 + rx1) / 2 * w, band = (rx1 - rx0) * w * 0.08;
+      const rc = Math.max(0, ...f.samples.filter(q => Math.abs(q.x - midX) <= band).map(q => q.r));
+      return Math.max(rc, f.best.r * 0.75);
+    });
+    const r = Math.min(...rPad);
+    fits.forEach(f => {
+      const ok = f.samples.filter(q => q.r >= r * 0.98).sort((a, b) => a.dc - b.dc);
+      if (ok.length) f.best = ok[0];
+    });
     const size = clamp(r * 2 * 0.86, 56, 440);
     fits.forEach(({ p, best }) => {
       p.el.style.setProperty('--cx', best.x.toFixed(1) + 'px');
@@ -1776,8 +1789,7 @@ const Renderer = {
     });
     const dv = $('#dividers');
     dv.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    const exit = fits[0].exit;
-    dv.innerHTML = Array.from(dividers).map(a => { const [x, y] = exit(a); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('');
+    dv.innerHTML = Array.from(dividers.values()).map(([a, b, c, d]) => `<line x1="${a}" y1="${b}" x2="${c}" y2="${d}"/>`).join('');
   },
   setShape(p, n, animate) {
     const R = this.R;
@@ -1810,6 +1822,7 @@ const Renderer = {
     this.displayScore = game.score.total(); this.scoreFrom = this.displayScore; this.scoreTo = this.displayScore; this.scoreStart = 0;
     this.hubScore.textContent = I18n.fmt(this.displayScore);
     this.comboChip.hidden = true; this.lastCombo = 0; this.popSlots = [];
+    this.roundTitle.hidden = true;
     $$('.banner, .score-pop, .sparkles', this.float).forEach(e => e.remove());
   },
   setPressed(id, on) {
@@ -1836,7 +1849,7 @@ const Renderer = {
     if (p) {
       p.el.querySelector('.pad-flash').style.setProperty('--flash', Theme.color('--' + result));
       this.retrigger(p.el.querySelector('.pad-flash'), 'go');
-      if (result === 'miss' && !reducedMotion()) this.retrigger(p.box, 'shake');
+      if (result === 'miss' && !reducedMotion()) this.retrigger(p.svg, 'shake');
       const v = n.round === this.shownRound ? p.verts[n.vertex] : null;
       if (v) {
         v.classList.remove('j-perfect', 'j-great', 'j-good', 'j-miss');
@@ -1965,8 +1978,15 @@ const Renderer = {
     }
     const done = pos.phase === 'end' ? CONFIG.TOTAL_ROUNDS : r + (pos.phase === 'round' ? pos.beat / g.roundBeats : 0);
     this.hubProg.setAttribute('stroke-dasharray', `${(this.progLen * done / CONFIG.TOTAL_ROUNDS).toFixed(2)} 1000`);
+    // 라운드 카운트 동안 ROUND n 크게 표시
+    const showTitle = pos.phase === 'prep';
+    if (this.roundTitle.hidden === showTitle) {
+      this.roundTitle.hidden = !showTitle;
+      if (showTitle) { this.roundTitleN.textContent = r + 1; this.roundTitleOf.textContent = '/' + CONFIG.TOTAL_ROUNDS; this.retrigger(this.roundTitle, 'x'); }
+    }
+    if (showTitle && this.roundTitleN.textContent !== String(r + 1)) this.roundTitleN.textContent = r + 1;
     if (pos.phase === 'prep') {
-      const cnt = pos.beatsLeft > CONFIG.COUNT_IN_BEATS ? `R${r + 1}` : String(Math.max(1, Math.ceil(pos.beatsLeft)));
+      const cnt = String(Math.max(1, Math.min(CONFIG.COUNT_IN_BEATS, Math.ceil(pos.beatsLeft))));
       if (this.lastCount !== cnt) {
         this.lastCount = cnt;
         this.hubCount.hidden = false; this.hubScore.hidden = true;
@@ -1988,7 +2008,7 @@ const Renderer = {
       this.hubScore.textContent = I18n.fmt(this.displayScore);
     }
     // --- 퍼펙트 콤보 칩 (2 이상일 때만)
-    const pc = g.score.perfectCombo;
+    const pc = pos.phase === 'prep' ? 0 : g.score.perfectCombo;
     if (pc !== this.lastCombo) {
       this.lastCombo = pc;
       this.comboChip.hidden = pc < 2;
