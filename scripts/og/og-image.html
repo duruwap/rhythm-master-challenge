@@ -1,80 +1,56 @@
 <!doctype html>
-<!-- OG 대표 이미지 원본 (1200×630). 수정 후 scripts/og/render.sh 로 static/og-image.png 를 다시 만든다. -->
+<!-- OG 대표 이미지 원본 (1200×630). 수정 후 `node scripts/og/render.js` 로 static/og-image.png 를 다시 만든다.
+     메인 화면 상단 로고(.logo-mark)와 같은 모양: 파스텔 4칸 + 도형 글리프 + 가운데 점 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <link rel="stylesheet" href="../../static/fonts/pretendard/pretendardvariable-dynamic-subset.css">
 <style>
-  :root { --pad-7: #FF9EB5; --pad-9: #8FD3FF; --pad-1: #9EF0C8; --pad-3: #FFE38A; --ink: #2B2B3A; --sub: #6E6A80; --accent: #7B5CFF; }
+  :root { --pad-7: #FF9EB5; --pad-9: #8FD3FF; --pad-1: #9EF0C8; --pad-3: #FFE38A; --pad-ink: #2F2540; --text: #2B2B3A; --sub: #6E6A80; --accent: #7B5CFF; --bg: #FFF8F0; }
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1200px; height: 630px; overflow: hidden; }
-  body { position: relative; background: #FFF8F0; font-family: 'Pretendard Variable', Pretendard, sans-serif; color: var(--ink); }
-  /* 파스텔 블롭 배경 */
-  .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .75; }
-  .b1 { width: 560px; height: 560px; left: -140px; top: -180px; background: var(--pad-7); }
-  .b2 { width: 560px; height: 560px; right: -160px; top: -200px; background: var(--pad-9); }
-  .b3 { width: 520px; height: 520px; left: -120px; bottom: -260px; background: var(--pad-1); }
-  .b4 { width: 540px; height: 540px; right: -140px; bottom: -260px; background: var(--pad-3); }
-  /* 흩어진 도형 장식 (정사각형으로 잘려도 가운데는 깔끔하게) */
-  .deco { position: absolute; opacity: .9; }
-  .card {
-    position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 1040px; height: 470px;
-    border-radius: 48px; background: rgba(255,255,255,.62); border: 2px solid rgba(255,255,255,.9);
-    box-shadow: 0 30px 80px rgba(60,40,90,.14); backdrop-filter: blur(24px);
-    display: flex; align-items: center; gap: 56px; padding: 0 64px;
+  body {
+    position: relative; font-family: 'Pretendard Variable', Pretendard, sans-serif; color: var(--text);
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center; gap: 72px;
   }
-  /* 게임 화면처럼 4분할 패드 + 가운데 허브 */
-  .pads { position: relative; flex: none; width: 330px; height: 330px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .pad { border-radius: 38px; display: grid; place-items: center; box-shadow: inset 0 -10px 0 rgba(0,0,0,.07); }
-  .pad svg { width: 96px; height: 96px; overflow: visible; }
-  .hub { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 112px; height: 112px; border-radius: 50%;
-    background: #FFF8F0; box-shadow: 0 8px 24px rgba(60,40,90,.18); display: grid; place-items: center; }
-  .hub::before { content: ''; position: absolute; inset: 10px; border-radius: 50%; border: 8px solid #E8E2F0; border-top-color: var(--accent); border-right-color: var(--accent); rotate: 20deg; }
-  .hub b { font-size: 40px; font-weight: 900; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .kicker { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: .02em; }
-  h1 { white-space: nowrap; font-size: 74px; line-height: 1.02; font-weight: 900; letter-spacing: -.045em; margin-top: 10px; }
-  .ko { white-space: nowrap; font-size: 31px; font-weight: 800; color: var(--sub); margin-top: 16px; letter-spacing: -.02em; }
-  .chips { display: flex; gap: 12px; margin-top: 30px; }
-  .chip { padding: 10px 20px; border-radius: 999px; font-size: 24px; font-weight: 800; background: #fff; box-shadow: 0 4px 14px rgba(60,40,90,.08); }
-  .chip.dark { background: var(--ink); color: #fff; }
+  /* 은은한 파스텔 배경 (네 모서리에 패드 색) */
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .45; z-index: 0; }
+  .b1 { width: 520px; height: 520px; left: -220px; top: -240px; background: var(--pad-7); }
+  .b2 { width: 520px; height: 520px; right: -220px; top: -240px; background: var(--pad-9); }
+  .b3 { width: 520px; height: 520px; left: -220px; bottom: -260px; background: var(--pad-1); }
+  .b4 { width: 520px; height: 520px; right: -220px; bottom: -260px; background: var(--pad-3); }
+
+  /* 메인 화면 로고와 같은 구성 */
+  .logo { position: relative; z-index: 1; flex: none; width: 330px; height: 330px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .logo span {
+    border-radius: 30%; display: grid; place-items: center;
+    box-shadow: inset 0 -12px 0 rgba(0,0,0,.08), 0 14px 36px rgba(60,40,80,.15);
+  }
+  .logo svg { width: 38%; height: 38%; fill: var(--pad-ink); }
+  .logo::after {
+    content: ''; position: absolute; left: 50%; top: 50%; width: 26%; height: 26%;
+    translate: -50% -50%; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 12px var(--bg);
+  }
+
+  .text { position: relative; z-index: 1; display: flex; flex-direction: column; }
+  .kicker { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: .06em; }
+  h1 { font-size: 86px; line-height: 1.02; font-weight: 900; letter-spacing: -.045em; margin-top: 14px; white-space: nowrap; }
+  .ko { font-size: 32px; font-weight: 750; color: var(--sub); margin-top: 22px; letter-spacing: -.02em; }
 </style>
 </head>
 <body>
   <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
-  <!-- 장식 도형 -->
-  <svg class="deco" style="left:36px;top:26px;width:54px;height:54px" viewBox="0 0 10 10"><polygon points="5,0.5 9.5,9 0.5,9" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg>
-  <svg class="deco" style="right:48px;bottom:22px;width:58px;height:58px" viewBox="0 0 10 10"><polygon points="5,0.5 9.3,3 9.3,7 5,9.5 0.7,7 0.7,3" fill="none" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>
-  <svg class="deco" style="right:120px;top:18px;width:30px;height:30px" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#fff"/></svg>
-  <svg class="deco" style="left:120px;bottom:16px;width:40px;height:40px" viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1" fill="none" stroke="#fff" stroke-width="1.3" transform="rotate(45 5 5)"/></svg>
-
-  <div class="card">
-    <div class="pads">
-      <!-- 패드마다 도형 + 꼭짓점(공이 지나가는 점) -->
-      <div class="pad" style="background:var(--pad-7)">
-        <svg viewBox="-50 -50 100 100"><polygon points="0,-44 38,22 -38,22" fill="rgba(255,255,255,.35)" stroke="#2B2B3A" stroke-opacity=".55" stroke-width="5" stroke-linejoin="round"/>
-          <g fill="#2B2B3A"><circle cx="0" cy="-44" r="10" fill="#F5B700" stroke="#2B2B3A" stroke-width="4"/><circle cx="38" cy="22" r="9"/><circle cx="-38" cy="22" r="9"/></g></svg>
-      </div>
-      <div class="pad" style="background:var(--pad-9)">
-        <svg viewBox="-50 -50 100 100"><rect x="-34" y="-34" width="68" height="68" fill="rgba(255,255,255,.35)" stroke="#2B2B3A" stroke-opacity=".55" stroke-width="5" stroke-linejoin="round" transform="rotate(45)"/>
-          <g fill="#2B2B3A"><circle cx="0" cy="-48" r="9"/><circle cx="48" cy="0" r="9"/><circle cx="0" cy="48" r="9"/><circle cx="-48" cy="0" r="10" fill="#fff" stroke="#2B2B3A" stroke-width="4"/></g></svg>
-      </div>
-      <div class="pad" style="background:var(--pad-1)">
-        <svg viewBox="-50 -50 100 100"><polygon points="0,-44 42,-14 26,36 -26,36 -42,-14" fill="rgba(255,255,255,.35)" stroke="#2B2B3A" stroke-opacity=".55" stroke-width="5" stroke-linejoin="round"/>
-          <g fill="#2B2B3A"><circle cx="0" cy="-44" r="9"/><circle cx="42" cy="-14" r="10" fill="#fff" stroke="#2B2B3A" stroke-width="4"/><circle cx="26" cy="36" r="9"/><circle cx="-26" cy="36" r="9"/><circle cx="-42" cy="-14" r="9"/></g></svg>
-      </div>
-      <div class="pad" style="background:var(--pad-3)">
-        <svg viewBox="-50 -50 100 100"><polygon points="0,-44 38,-22 38,22 0,44 -38,22 -38,-22" fill="rgba(255,255,255,.35)" stroke="#2B2B3A" stroke-opacity=".55" stroke-width="5" stroke-linejoin="round"/>
-          <g fill="#2B2B3A"><circle cx="0" cy="-44" r="9"/><circle cx="38" cy="-22" r="9"/><circle cx="38" cy="22" r="10" fill="#F5B700" stroke="#2B2B3A" stroke-width="4"/><circle cx="0" cy="44" r="9"/><circle cx="-38" cy="22" r="9"/><circle cx="-38" cy="-22" r="9"/></g></svg>
-      </div>
-      <div class="hub"><b>3:4</b></div>
-    </div>
-    <div class="text">
-      <div class="kicker">POLYRHYTHM GAME</div>
-      <h1>Rhythm Master<br>Challenge</h1>
-      <div class="ko">리듬 마스터 챌린지 · 꼭짓점마다 톡!</div>
-      <div class="chips"><span class="chip dark">8 ROUNDS</span><span class="chip">Easy · Normal · Hard</span></div>
-    </div>
+  <div class="logo" aria-hidden="true">
+    <span style="background:var(--pad-7)"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4.6"/></svg></span>
+    <span style="background:var(--pad-9)"><svg viewBox="0 0 10 10"><polygon points="5,0.6 9.8,9.2 0.2,9.2"/></svg></span>
+    <span style="background:var(--pad-1)"><svg viewBox="0 0 10 10"><polygon points="5,0 10,5 5,10 0,5"/></svg></span>
+    <span style="background:var(--pad-3)"><svg viewBox="0 0 10 10"><polygon points="5,0.3 9.8,3.8 8,9.5 2,9.5 0.2,3.8"/></svg></span>
+  </div>
+  <div class="text">
+    <div class="kicker">POLYRHYTHM GAME</div>
+    <h1>Rhythm Master<br>Challenge</h1>
+    <div class="ko">리듬 마스터 챌린지</div>
   </div>
 </body>
 </html>

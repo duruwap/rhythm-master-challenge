@@ -40,7 +40,7 @@ STATS_PLACEHOLDER = "<!--RMC_STATS-->"
 OG_PLACEHOLDER = "<!--RMC_OG-->"
 OG_IMAGE = "og-image.png"
 OG_TITLE = "Rhythm Master Challenge · 리듬 마스터 챌린지"
-OG_DESC = "도형의 꼭짓점마다 톡! 8라운드 폴리리듬 리듬 게임 — Tap every corner of the shapes on the beat."
+OG_DESC = "도형의 꼭짓점마다 톡! 폴리리듬 리듬 게임 — Tap every corner of the shapes on the beat."
 OG_LEVELS = {"easy": "쉬움 Easy", "normal": "보통 Normal", "hard": "어려움 Hard"}
 
 
