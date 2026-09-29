@@ -387,10 +387,12 @@ kbd {
 
 .float-layer { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 6; pointer-events: none; }
 .combo-chip {
-  margin-top: 3px; white-space: nowrap; padding: 1px 7px; border-radius: 999px;
-  background: var(--perfect); color: #2B2100; font-weight: 900; font-size: clamp(9px, 1.9vmin, 12px); line-height: 1.5;
+  position: absolute; left: 0; bottom: calc(clamp(86px, 17vmin, 136px) / 2 + 12px); translate: -50% 0;
+  white-space: nowrap; padding: 5px 12px; border-radius: 999px;
+  background: var(--perfect); color: #2B2100; font-family: var(--font-num); font-weight: 900; font-size: clamp(12px, 2.4vmin, 16px);
+  box-shadow: 0 4px 14px rgba(245,183,0,.4);
 }
-/* 위치값(transform)을 건드리지 않는 scale 전용 애니메이션 → 좌우로 튀는 깜빡임 없음 */
+/* 가운데 정렬은 translate, 애니메이션은 scale 만 사용 → 서로 덮어쓰지 않아 좌우로 튀는 깜빡임 없음 */
 .combo-chip.bump { animation: chipPop .25s var(--ease-out-back); }
 @keyframes chipPop { from { scale: .5; opacity: 0; } to { scale: 1; opacity: 1; } }
 .score-pop {
@@ -676,10 +678,10 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
           <span class="hub-round" id="hub-round">1/8</span>
           <span class="hub-score num" id="hub-score">0</span>
           <span class="hub-count" id="hub-count" hidden>4</span>
-          <span class="combo-chip num" id="combo-chip" hidden></span>
         </div>
       </button>
       <div class="float-layer" id="float-layer" aria-live="polite">
+        <div class="combo-chip" id="combo-chip" hidden></div>
         <div class="round-title" id="round-title" hidden><small>ROUND</small><b class="num" id="round-title-n">1</b><span class="num" id="round-title-of">/8</span></div>
       </div>
     </div>
@@ -1786,9 +1788,6 @@ const Renderer = {
     });
     const cx = w / 2, cy = h / 2;
     const hubR = ($('#hub').offsetWidth || 100) / 2 + 12;
-    // 가운데 예약 영역: 허브 위(ROUND n 표시)·아래(점수 팝업·라운드 등급 배너)
-    const zone = { x0: cx - Math.min(w * 0.36, 140), x1: cx + Math.min(w * 0.36, 140), y0: cy - hubR - 70, y1: cy + hubR + 90 };
-    const rectDist = (x, y) => Math.hypot(Math.max(zone.x0 - x, 0, x - zone.x1), Math.max(zone.y0 - y, 0, y - zone.y1));
     const safe = this.safeInsets();
     const metaH = 30;   // 도형 아래 라벨 공간
     const dividers = new Map();
@@ -1812,7 +1811,7 @@ const Renderer = {
         const x = bx0 + (bx1 - bx0) * i / steps, y = by0 + (by1 - by0) * j / steps;
         if (!pointInPoly(x, y, poly)) continue;
         let d = Math.min(x - safe.l, w - safe.r - x, y - safe.t, h - safe.b - y - metaH, Math.hypot(x - cx, y - cy) - hubR,
-          rectDist(x, y), rectDist(x, y + metaH));   // 도형 아래 라벨(×N)도 허브와 겹치지 않게
+          Math.hypot(x - cx, y + metaH - cy) - hubR);   // 도형 아래 라벨(×N)도 허브와 겹치지 않게
         for (let k = 0; k < poly.length; k++) d = Math.min(d, segDist(x, y, poly[k], poly[(k + 1) % poly.length]));
         samples.push({ x, y, r: d, dc: Math.hypot(x - (bx0 + bx1) / 2, y - (by0 + by1) / 2) });
         if (d > best.r) best = { x, y, r: d };
@@ -2091,7 +2090,7 @@ const Renderer = {
     if (pc !== this.lastCombo) {
       this.lastCombo = pc;
       this.comboChip.hidden = pc < 2;
-      if (pc >= 2) { this.comboChip.textContent = `COMBO ×${pc}`; this.retrigger(this.comboChip, 'bump'); }
+      if (pc >= 2) { this.comboChip.textContent = `PERFECT COMBO ×${pc}`; this.retrigger(this.comboChip, 'bump'); }
     }
   },
 };
