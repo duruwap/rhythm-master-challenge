@@ -6,7 +6,10 @@
 ## 서버 배포 (Ubuntu)
 
 디렉토리 규칙: 프로젝트 `/scsrun/app/rhythm-master-challenge`, PID `/scsrun/pid/rhythm-master-challenge.pid`,
-로그 `/scslog/app/rhythm-master-challenge/app.log`, 가상환경 `<프로젝트>/venv`.
+로그 `/scslog/app/rhythm-master-challenge/app.log`, 데이터(DB) `/scsdat/app/rhythm-master-challenge/rhythm_master.sqlite3`, 가상환경 `<프로젝트>/venv`.
+
+DB 는 SQLite 파일이라 별도 DB 계정이 없습니다. 서버(`startup.sh`)와 배치(cron)를 **같은 일반 사용자**로 실행하고,
+그 사용자가 `/scsrun`·`/scslog`·`/scsdat` 에 쓸 수 있어야 합니다 (최초 1회: `sudo mkdir -p /scsdat/app && sudo chown -R <사용자>: /scsdat`).
 
 ```bash
 sudo apt update && sudo apt install -y python3 python3-venv git   # 최초 1회
@@ -21,7 +24,7 @@ cd rhythm-master-challenge && ./startup.sh      # → http://<서버 IP>:15002
 | `./startup.sh stop` / `status` | 중지 / 상태 확인 |
 | `./startup.sh dev` | Flask 개발 서버 (포그라운드, 자동 리로드) |
 
-포트·워커 수 등은 `scsrun.conf` 에서 설정합니다 (`PORT` 기본 15002, `WORKERS` 기본 2, `RMC_DATABASE` SQLite 경로).
+포트·워커 수 등은 `scsrun.conf` 에서 설정합니다 (`PORT` 기본 15002, `WORKERS` 기본 2, `RMC_DATABASE` SQLite 경로, 기본 `/scsdat/app/<앱이름>/rhythm_master.sqlite3`).
 방화벽 사용 시 `sudo ufw allow 15002/tcp`.
 
 ### 공통 런처 `scripts/scs-run.sh`
@@ -36,6 +39,7 @@ cp scripts/scs-run.sh ~/scs-run.sh
 
 - 프로젝트에 `scsrun.conf` 가 없으면 `venv/bin/python app.py` 로 실행합니다 (기존 run-*.sh 와 동일).
 - `scsrun.conf` 에서 `APP_CMD`(실행 명령), `HEALTH_URL`(기동 후 확인 URL)과 앱 환경 변수를 정할 수 있습니다.
+- 데이터 디렉토리 `/scsdat/app/<앱이름>` 을 만들고 앱에 `SCS_DATA_DIR` 환경 변수로 전달합니다.
 - `requirements.txt` 가 바뀌었을 때만 `pip install` 을 다시 실행하고, `git pull` 은 `--ff-only` 로 실행합니다.
 - 기동 직후 프로세스가 죽으면 로그 마지막 20줄을 보여 주고 실패 코드로 종료합니다.
 
@@ -74,6 +78,7 @@ batch/build_summary.py        play_detail → summary 테이블 재생성 (한 �
 batch/run_summary.sh          cron 실행용 래퍼 (로그: /scslog/app/rhythm-master-challenge/batch.log)
 ```
 
+- DB 파일: `/scsdat/app/rhythm-master-challenge/rhythm_master.sqlite3` (WAL 모드라 같은 폴더에 `-wal`·`-shm` 파일도 생김).
 - DDL 은 서버 기동 시·배치 실행 시 자동 적용됩니다(모두 `IF NOT EXISTS`). summary 가 비어 있으면 서버 기동 시 1회 자동 생성합니다.
 - 주기 실행(예: 10분마다) — `crontab -e`:
   ```

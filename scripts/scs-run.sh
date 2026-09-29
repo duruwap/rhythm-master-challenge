@@ -15,6 +15,7 @@
 #    프로젝트  /scsrun/app/<앱이름>
 #    PID      /scsrun/pid/<앱이름>.pid
 #    로그     /scslog/app/<앱이름>/app.log
+#    데이터   /scsdat/app/<앱이름>        (DB 등 보존 데이터, 앱에 SCS_DATA_DIR 로 전달)
 #    가상환경  /scsrun/app/<앱이름>/venv
 #
 #  프로젝트별 설정(선택): <프로젝트>/scsrun.conf 를 source 한다. 정의 가능 항목
@@ -22,7 +23,7 @@
 #    HEALTH_URL  기동 후 확인할 URL (curl 이 있을 때만)
 #    그 외 export 한 환경 변수는 앱에 그대로 전달된다.
 #
-#  경로 재정의(테스트용): SCS_APP_ROOT, SCS_PID_DIR, SCS_LOG_ROOT, SCS_APP_DIR
+#  경로 재정의(테스트용): SCS_APP_ROOT, SCS_PID_DIR, SCS_LOG_ROOT, SCS_DATA_ROOT, SCS_APP_DIR
 # =============================================================================
 set -u
 
@@ -47,6 +48,7 @@ PID_DIR="${SCS_PID_DIR:-/scsrun/pid}"
 PID_FILE="$PID_DIR/$APP_NAME.pid"
 LOG_DIR="${SCS_LOG_ROOT:-/scslog/app}/$APP_NAME"
 LOG="$LOG_DIR/app.log"
+export SCS_DATA_DIR="${SCS_DATA_ROOT:-/scsdat/app}/$APP_NAME"
 VENV="$APP_DIR/venv"
 PYTHON="$VENV/bin/python"
 APP_CMD=""
@@ -134,7 +136,7 @@ load_conf() {
 }
 
 start_app() {
-    mkdir -p "$PID_DIR" "$LOG_DIR"
+    mkdir -p "$PID_DIR" "$LOG_DIR" "$SCS_DATA_DIR"
     log "서버 기동 중..."
     log "명령: $APP_CMD"
     cd "$APP_DIR" || exit 1
