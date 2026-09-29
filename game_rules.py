@@ -27,6 +27,10 @@ MILESTONE = {10: 2000, 20: 5000, 50: 10000}
 FULL_PERFECT = 20000
 LEVEL_MUL = {"easy": 0.8, "normal": 1.0, "hard": 1.3}
 
+# 등급: 같은 난이도 상위 % 누적 기준 (index.html 의 TIER_BANDS · CONFIG.MIN_RANK_SAMPLES 와 동일)
+TIER_BANDS = ((1, "CHALLENGER"), (4, "MASTER"), (11, "DIAMOND"), (25, "PLATINUM"), (45, "GOLD"), (70, "SILVER"), (100, "BRONZE"))
+MIN_RANK_SAMPLES = 20   # 기록이 이보다 적으면 클라이언트는 최대 점수 대비 비율로 등급을 매김
+
 
 def combo_bonus(n: int) -> int:
     if 2 <= n <= 4:

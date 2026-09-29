@@ -75,7 +75,8 @@ db/ddl/001_play_detail.sql    플레이 상세 (플레이 일시·익명 플레�
 db/ddl/002_score_summary.sql  score_summary (난이도별 점수 분포) · level_summary (난이도별 요약)
 db/ddl/003_site_summary.sql   site_summary (누적 플레이어 수·플레이 수, 오늘 기준)
 batch/build_summary.py        play_detail → summary 테이블 재생성 (한 트랜잭션)
-batch/run_summary.sh          cron 실행용 래퍼 (로그: /scslog/app/rhythm-master-challenge/batch.log)
+batch/run_summary.sh          cron 실행용 래퍼 (로그: /scslog/app/rhythm-master-challenge/batch.log,
+                              실행마다 난이도별 등급 점수 범위도 기록)
 ```
 
 - DB 파일: `/scsdat/app/rhythm-master-challenge/rhythm_master.sqlite3` (WAL 모드라 같은 폴더에 `-wal`·`-shm` 파일도 생김).

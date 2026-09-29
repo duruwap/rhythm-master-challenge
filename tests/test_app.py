@@ -5,7 +5,7 @@ import pytest
 
 import db
 from app import create_app
-from batch.build_summary import build_summary, rank_samples
+from batch.build_summary import build_summary, rank_samples, tier_ranges
 from game_rules import LEVEL_SCORE_MAX
 
 
@@ -102,3 +102,14 @@ def test_rate_limit(dbpath):
     c = create_app({"DATABASE": dbpath, "TESTING": True, "RATE_LIMIT": 5}).test_client()
     codes = [play(c).status_code for _ in range(7)]
     assert codes[:5] == [201] * 5 and codes[5] == 429
+
+
+def test_tier_ranges():
+    assert tier_ranges([(k, 100) for k in range(1, 6)], 5) is None          # 기록 20판 미만
+    scores = list(range(1000, 0, -10))                                     # 100판, 점수 모두 다름
+    ranges = tier_ranges([(k, s) for k, s in enumerate(scores, 1)], 100)
+    assert [t for t, _, _ in ranges] == ["CHALLENGER", "MASTER", "DIAMOND", "PLATINUM", "GOLD", "SILVER", "BRONZE"]
+    assert ranges[0][1] == 1000                                            # 1위만 상위 1/101 = 0.99%
+    assert ranges[0][2] is None and ranges[-1][1] == 0
+    for (_, lo, _), (_, _, hi) in zip(ranges, ranges[1:]):
+        assert hi == lo - 1                                                 # 빈틈·겹침 없음
