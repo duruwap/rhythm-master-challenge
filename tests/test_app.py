@@ -113,3 +113,12 @@ def test_tier_ranges():
     assert ranges[0][2] is None and ranges[-1][1] == 0
     for (_, lo, _), (_, _, hi) in zip(ranges, ranges[1:]):
         assert hi == lo - 1                                                 # 빈틈·겹침 없음
+
+
+def test_counts_update_without_batch(client):
+    play(client, playerId="player-aaaa")
+    play(client, playerId="player-aaaa")
+    play(client, playerId="player-bbbb")
+    stats = client.get("/api/stats").get_json()
+    assert stats["plays"] == 3 and stats["players"] == 2          # 배치 전에도 즉시 반영
+    assert re.search(r'"plays":3', client.get("/").get_data(as_text=True))

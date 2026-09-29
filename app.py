@@ -250,13 +250,20 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not limiter.allow(ip):
             return jsonify(error="too many requests"), 429
         conn = get_db()
+        new_player = conn.execute(
+            "SELECT 1 FROM play_detail WHERE player_id = ? LIMIT 1", (play["player_id"],)).fetchone() is None
         conn.execute(
             "INSERT INTO play_detail (played_at, player_id, level, bpm, seed, score, max_possible, accuracy, max_combo, tier) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), play["player_id"], play["level"], play["bpm"],
              play["seed"], play["score"], play["max_possible"], play["accuracy"], play["max_combo"], play["tier"]),
         )
+        # 누적 플레이·플레이어 수는 배치를 기다리지 않고 즉시 반영 (분포·오늘 통계는 배치가 재계산)
+        conn.execute("UPDATE site_summary SET total_plays = total_plays + 1, total_players = total_players + ? WHERE id = 1",
+                     (1 if new_player else 0,))
         conn.commit()
+        with cache_lock:
+            cache["stats"] = None
         return jsonify(ok=True), 201
 
     @app.errorhandler(413)

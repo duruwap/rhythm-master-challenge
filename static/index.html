@@ -17,11 +17,9 @@
   var dark = false;
   try {
     var s = JSON.parse(localStorage.getItem('rmc.settings.v1') || '{}');
-    var th = s.theme || 'system';
+    var th = s.themeChosen ? s.theme : 'light';   // 기본은 라이트, 사용자가 고른 경우에만 그 값(시스템 포함)
     dark = th === 'dark' || (th === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  } catch (e) {
-    dark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  }
+  } catch (e) { /* 기본 라이트 */ }
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
 })();
 </script>
@@ -236,7 +234,10 @@ body.playing .bg-blobs { display: none; }
   background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow-1);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); font-weight: 700; font-size: 14px;
 }
+.best-card { flex-wrap: wrap; justify-content: center; row-gap: 2px; }
+.best-card > * { white-space: nowrap; }
 .best-card b { font-size: 17px; }
+.best-card .best-pct { color: var(--accent); font-weight: 850; }
 .challenge-card {
   width: 100%; padding: 14px 16px; border-radius: var(--radius-card); text-align: left;
   background: linear-gradient(135deg, color-mix(in srgb, var(--pad-7) 35%, var(--surface)), color-mix(in srgb, var(--pad-9) 35%, var(--surface)));
@@ -632,7 +633,7 @@ input[type="range"] { flex: 1; accent-color: var(--accent); height: 32px; touch-
         <p data-i18n="tagline"></p>
         <p class="players-line" id="players-line" hidden></p>
       </div>
-      <div class="best-card" id="title-best" hidden><span>🏆</span><span data-i18n="bestScore"></span><b class="num" id="title-best-n"></b></div>
+      <div class="best-card" id="title-best" hidden><span>🏆</span><span data-i18n="bestScore"></span><b class="num" id="title-best-n"></b><span class="best-pct num" id="title-best-pct" hidden></span></div>
       <div class="challenge-card" id="challenge-card" hidden>
         <div style="font-size:28px" aria-hidden="true">🥁</div>
         <div class="c-body"><b data-i18n="challengeBanner"></b><span id="challenge-info"></span></div>
@@ -838,7 +839,8 @@ const CONFIG = {
     normal: [[1, 2, 4], [1, 2, 3, 4], [1, 2, 3, 4], [2, 3, 4, 6], [2, 3, 4, 5, 6], [3, 4, 5, 6], [3, 4, 5, 6, 7], [3, 4, 5, 6, 7, 8]],
     hard: [[1, 2, 4, 8], [1, 2, 3, 4, 6], [2, 3, 4, 6, 8], [2, 3, 4, 5, 6, 8], [3, 4, 5, 6, 8], [3, 4, 5, 6, 7, 8], [3, 4, 5, 6, 7, 8], [4, 5, 6, 7, 8]],
   },
-  MIN_RANK_SAMPLES: 20,        // 난이도별 기록이 이 수 이상일 때 상위 %·등급을 분포로 계산
+  MIN_RANK_SAMPLES: 20,        // 난이도별 기록이 이 수 이상일 때 등급을 상위 % 로 매김 (미만이면 최대 점수 대비 비율)
+  MIN_PCT_PLAYS: 1,            // 상위 % 표시는 같은 난이도 기록이 1판 이상이면 바로
   WINDOWS_MS: { perfect: 45, great: 90, good: 140, lastLate: 280 },   // lastLate: 패드별 라운드 마지막 음은 늦게 쳐도 280ms까지 GOOD
   TAIL_BEATS: 1,               // 연주가 끝난 뒤 다음 라운드 카운트 전 여유 박
   START_DELAY_S: 0.1,
@@ -1075,7 +1077,7 @@ const Storage = {
   get(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
   set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; } },
 };
-const DEFAULT_SETTINGS = { bpm: 90, metronome: true, volume: 0.8, level: 'normal', offsetMs: 0, vibration: true, lang: null, theme: 'system' };
+const DEFAULT_SETTINGS = { bpm: 90, metronome: true, volume: 0.8, level: 'normal', offsetMs: 0, vibration: true, lang: null, theme: 'light', themeChosen: false };
 const Settings = {
   data: Object.assign({}, DEFAULT_SETTINGS),
   load() {
@@ -1085,7 +1087,8 @@ const Settings = {
     d.volume = clamp(+d.volume, 0, 1); if (!isFinite(d.volume)) d.volume = 0.8;
     d.offsetMs = clamp(Math.round(+d.offsetMs || 0), -CONFIG.OFFSET_MAX_MS, CONFIG.OFFSET_MAX_MS);
     if (!LEVELS.includes(d.level)) d.level = 'normal';
-    if (!['system', 'light', 'dark'].includes(d.theme)) d.theme = 'system';
+    // 예전 기본값('시스템')으로 저장돼 있던 값은 무시하고 라이트로. 직접 고른 테마만 유지
+    if (!d.themeChosen || !['system', 'light', 'dark'].includes(d.theme)) { d.theme = 'light'; d.themeChosen = false; }
     this.data = d;
   },
   save() { Storage.set('rmc.settings.v1', this.data); },
@@ -1225,10 +1228,10 @@ const TIER_NAMES = {
   ja: { BRONZE: 'ブロンズ', SILVER: 'シルバー', GOLD: 'ゴールド', PLATINUM: 'プラチナ', DIAMOND: 'ダイヤ', MASTER: 'マスター', CHALLENGER: 'チャレンジャー' },
 };
 Object.keys(TIER_NAMES).forEach(l => Object.keys(TIER_NAMES[l]).forEach(k => { I18N[l]['tier' + k] = TIER_NAMES[l][k]; }));
-Object.assign(I18N.ko, { playersNow: '🎮 {n}명이 즐기고 있어요', saveImage: '이미지 저장', rankLevel: '{level} 도전자 중 상위 <b>{pct}%</b>', rankRhythm: '같은 리듬 도전자 중 상위 <b>{pct}%</b>' });
-Object.assign(I18N.en, { playersNow: '🎮 {n} players are enjoying the game', saveImage: 'Save Image', rankLevel: 'Top <b>{pct}%</b> of {level} players', rankRhythm: 'Top <b>{pct}%</b> on this rhythm' });
-Object.assign(I18N.zh, { playersNow: '🎮 {n} 位玩家正在畅玩', saveImage: '保存图片', rankLevel: '{level}难度挑战者中前 <b>{pct}%</b>', rankRhythm: '同节奏挑战者中前 <b>{pct}%</b>' });
-Object.assign(I18N.ja, { playersNow: '🎮 {n}人が遊んでいます', saveImage: '画像を保存', rankLevel: '{level}の挑戦者で上位 <b>{pct}%</b>', rankRhythm: '同じリズムの挑戦者で上位 <b>{pct}%</b>' });
+Object.assign(I18N.ko, { playersNow: '🎮 {n}명이 {plays}판 즐겼어요', topPctShort: '상위 {pct}%', saveImage: '이미지 저장', rankLevel: '{level} 도전자 중 상위 <b>{pct}%</b>', rankRhythm: '같은 리듬 도전자 중 상위 <b>{pct}%</b>' });
+Object.assign(I18N.en, { playersNow: '🎮 {n} players · {plays} plays so far', topPctShort: 'Top {pct}%', saveImage: 'Save Image', rankLevel: 'Top <b>{pct}%</b> of {level} players', rankRhythm: 'Top <b>{pct}%</b> on this rhythm' });
+Object.assign(I18N.zh, { playersNow: '🎮 {n} 位玩家 · 累计 {plays} 局', topPctShort: '前 {pct}%', saveImage: '保存图片', rankLevel: '{level}难度挑战者中前 <b>{pct}%</b>', rankRhythm: '同节奏挑战者中前 <b>{pct}%</b>' });
+Object.assign(I18N.ja, { playersNow: '🎮 {n}人が累計{plays}回プレイ', topPctShort: '上位 {pct}%', saveImage: '画像を保存', rankLevel: '{level}の挑戦者で上位 <b>{pct}%</b>', rankRhythm: '同じリズムの挑戦者で上位 <b>{pct}%</b>' });
 Object.assign(I18N.ko, {
   tagline: '도형의 꼭짓점마다 톡! 폴리리듬 챌린지',
   pcHint: 'PC: Q · W · A · S 키로 플레이 (동시에 여러 개 OK)',
@@ -1326,7 +1329,7 @@ const t = (k, p) => I18n.t(k, p);
    ========================================================================= */
 const Theme = {
   mq: window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null,
-  pref: 'system',
+  pref: 'light',
   init(pref) {
     this.pref = pref;
     const onChange = () => { if (this.pref === 'system') this.apply(); };
@@ -1334,7 +1337,7 @@ const Theme = {
     this.apply();
   },
   resolved() { return this.pref === 'system' ? (this.mq && this.mq.matches ? 'dark' : 'light') : this.pref; },
-  set(pref) { this.pref = pref; Settings.set('theme', pref); this.apply(); },
+  set(pref) { this.pref = pref; Settings.data.themeChosen = true; Settings.set('theme', pref); this.apply(); },
   toggle() { this.set(this.resolved() === 'dark' ? 'light' : 'dark'); },
   apply() {
     const r = this.resolved();
@@ -2156,13 +2159,13 @@ const TIER_COLORS = {
   dark: { BRONZE: '#E0955A', SILVER: '#C9D2DD', GOLD: '#FFCB2E', PLATINUM: '#4FE0CF', DIAMOND: '#7AA8FF', MASTER: '#B794FF' },
 };
 function tierOf(res) {
-  if (res.topPct != null) return TIER_BANDS.find(([max]) => res.topPct <= max)[1];
+  if (res.tierPct != null) return TIER_BANDS.find(([max]) => res.tierPct <= max)[1];
   const ratio = res.maxPossible ? res.total / res.maxPossible : 0;
   return TIER_FALLBACK.find(([min]) => ratio >= min)[1];
 }
+/** 상위 % 표시: 항상 0.1% 단위 (올림 → 실제보다 좋게 보이지 않음). 예: 10.5 */
 function fmtPct(p) {
-  if (p < 10) return String(Math.max(0.1, Math.ceil(p * 10) / 10));
-  return String(Math.ceil(p));
+  return clamp(Math.ceil(p * 10 - 1e-9) / 10, 0.1, 100).toFixed(1);
 }
 
 /* =========================================================================
@@ -2176,10 +2179,21 @@ const Stats = {
       fetch('api/stats').then(r => (r.ok ? r.json() : null)).then(d => { if (d) { this.data = d; App.refreshTitle(); } }).catch(() => {});
     }
   },
-  /** 같은 난이도 기록 분포에서 이 점수의 상위 %. 기록이 부족하면 null */
+  /** 등급을 상위 % 로 매길 만큼 기록이 쌓였는지 */
+  enoughForTier(level) {
+    const L = this.data && this.data.levels && this.data.levels[level];
+    return !!L && L.plays >= CONFIG.MIN_RANK_SAMPLES;
+  },
+  /** 방금 보낸 기록을 화면의 누적 수에 바로 더한다 (서버도 즉시 반영, 새로고침 없이 메인 화면에 표시) */
+  addLocalPlay() {
+    if (!this.data) this.data = { players: 0, plays: 0, levels: {} };
+    this.data.plays = (this.data.plays || 0) + 1;
+    if (!Storage.get('rmc.counted.v1', false)) { this.data.players = (this.data.players || 0) + 1; Storage.set('rmc.counted.v1', true); }
+  },
+  /** 같은 난이도 기록 분포에서 이 점수의 상위 %. 기록이 없으면 null */
   topPercent(level, score) {
     const L = this.data && this.data.levels && this.data.levels[level];
-    if (!L || !(L.plays >= CONFIG.MIN_RANK_SAMPLES) || !Array.isArray(L.s) || !L.s.length) return null;
+    if (!L || !(L.plays >= CONFIG.MIN_PCT_PLAYS) || !Array.isArray(L.s) || !L.s.length) return null;
     // 점수 내림차순 표본(순위 위치 k, 점수 s)에서 "내 점수보다 높은 기록 수"를 이분 탐색
     let lo = 0, hi = L.s.length - 1, higher = 0;
     while (lo <= hi) {
@@ -2499,14 +2513,15 @@ const Api = {
   enabled: /^https?:$/.test(location.protocol),
   /** 결과 기록: 백그라운드 전송(keepalive), 화면은 기다리지 않는다 */
   submit(res) {
-    if (!this.enabled) return;
+    if (!this.enabled) return false;
     const body = JSON.stringify({
       seed: res.seed, bpm: CONFIG.DEFAULT_BPM, level: res.level, score: res.total, maxPossible: res.maxPossible,
       accuracy: Math.round(res.accuracy * 100) / 100, maxCombo: res.maxPerfectCombo, playerId: Player.id(), tier: res.tier,
     });
     try {
       fetch('api/plays', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
-    } catch (e) { /* noop */ }
+      return true;
+    } catch (e) { return false; }
   },
 };
 
@@ -2644,14 +2659,17 @@ const App = {
   refreshTitle() {
     const best = Storage.get('rmc.best.v2.' + Settings.data.level, 0);
     $('#title-best').hidden = !(best > 0);
+    const bestPct = best > 0 ? Stats.topPercent(Settings.data.level, best) : null;
     $('#title-best-n').textContent = `${I18n.fmt(best || 0)} · ${t(Settings.data.level)}`;
+    $('#title-best-pct').hidden = bestPct == null;
+    if (bestPct != null) $('#title-best-pct').textContent = t('topPctShort', { pct: fmtPct(bestPct) });
     const c = this.challenge;
     $('#challenge-card').hidden = !c;
     if (c) $('#challenge-info').textContent = t('challengeInfo', { seed: c.seed, bpm: c.bpm, level: t(c.level) });
     $$('.level-btn').forEach(b => b.classList.toggle('last', b.dataset.level === Settings.data.level));
-    const players = Stats.data && Stats.data.players;
-    $('#players-line').hidden = !(players > 0);
-    if (players > 0) $('#players-line').textContent = t('playersNow', { n: I18n.fmt(players) });
+    const players = (Stats.data && Stats.data.players) || 0, plays = (Stats.data && Stats.data.plays) || 0;
+    $('#players-line').hidden = !(plays > 0);
+    if (plays > 0) $('#players-line').textContent = t('playersNow', { n: I18n.fmt(players), plays: I18n.fmt(plays) });
   },
   onLanguageChanged() {
     if (this.state === 'title') this.refreshTitle();
@@ -2741,10 +2759,11 @@ const App = {
     this.showScreen('result');
     // 상위 %·등급은 미리 받아 둔 분포로 즉시 계산 (네트워크 대기 없음)
     res.topPct = Stats.topPercent(res.level, res.total);
+    res.tierPct = Stats.enoughForTier(res.level) ? res.topPct : null;
     res.tier = tierOf(res);
     ResultView.play(res, isNew);
     this.renderShare();
-    Api.submit(res);   // 비동기 전송, 응답을 기다리지 않음
+    if (Api.submit(res)) Stats.addLocalPlay();   // 비동기 전송, 응답을 기다리지 않음
   },
 
   /** 저장용 이미지를 미리 만들어 둔다 (화면에는 표시하지 않음) */
