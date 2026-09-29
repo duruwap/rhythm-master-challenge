@@ -68,6 +68,21 @@ tests/              서버 테스트 (pytest)
 
 검증: 음수 점수, 리듬 최대치(`maxPossible`)를 넘는 점수, 난이도별 이론상 최대 점수(`game_rules.py`)를 넘는 점수, BPM ≠ 90 은 400 으로 거부합니다. IP당 분당 30회 제한.
 
+## 링크 미리보기 (OG 이미지)
+
+카카오톡·페이스북·X 등에 링크를 공유하면 대표 이미지(`static/og-image.png`, 1200×630)와 제목·설명이 카드로 표시됩니다.
+
+- 서버가 `/` 를 보낼 때 Open Graph·Twitter 태그를 **절대 주소**로 넣습니다 (카카오톡은 절대 주소만 인식).
+  주소는 `RMC_PUBLIC_URL`(scsrun.conf) → 없으면 요청 주소. nginx 뒤라면 아래 헤더를 넘겨 주세요.
+  ```nginx
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  ```
+- 친구 도전 링크(`/?seed=…&lv=…`)는 "리듬 도전장 도착!" 전용 제목으로 표시됩니다.
+- 이미지 수정: `scripts/og/og-image.html` 을 고친 뒤 `node scripts/og/render.js` (Playwright) 로 PNG 를 다시 만듭니다.
+  이미지 주소에 파일 수정 시각(`?v=`)이 붙어 SNS 캐시가 자동으로 갱신됩니다.
+- 카카오톡은 미리보기를 캐시하므로, 이미 공유한 링크는 [카카오 공유 디버거](https://developers.kakao.com/tool/debugger/sharing)에서 "캐시 초기화"를 누르면 새로 반영됩니다.
+
 ## DB · 통계 배치
 
 ```

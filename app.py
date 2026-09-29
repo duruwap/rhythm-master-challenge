@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import math
 import os
@@ -24,6 +25,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 
 from flask import Flask, Response, g, jsonify, request, send_from_directory
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import db
 from batch.build_summary import build_summary
@@ -35,6 +37,45 @@ SEED_MAX = 0xFFFFFFFF
 PLAYER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 TIERS = ("BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "MASTER", "CHALLENGER")
 STATS_PLACEHOLDER = "<!--RMC_STATS-->"
+OG_PLACEHOLDER = "<!--RMC_OG-->"
+OG_IMAGE = "og-image.png"
+OG_TITLE = "Rhythm Master Challenge · 리듬 마스터 챌린지"
+OG_DESC = "도형의 꼭짓점마다 톡! 8라운드 폴리리듬 리듬 게임 — Tap every corner of the shapes on the beat."
+OG_LEVELS = {"easy": "쉬움 Easy", "normal": "보통 Normal", "hard": "어려움 Hard"}
+
+
+def og_tags(base_url: str, args, image_version: int) -> str:
+    """카카오톡·SNS 링크 미리보기용 Open Graph 태그. 이미지·URL 은 절대 주소여야 한다."""
+    base = base_url.rstrip("/") + "/"
+    title, desc, url = OG_TITLE, OG_DESC, base
+    seed, level = args.get("seed", ""), args.get("lv", "normal")
+    if seed.isdigit() and int(seed) <= SEED_MAX:     # 친구에게 받은 도전 리듬 링크
+        level = level if level in OG_LEVELS else "normal"
+        title = f"🥁 리듬 도전장 도착! ({OG_LEVELS[level]}) · Rhythm Master Challenge"
+        desc = "친구가 보낸 리듬에 도전해 보세요. 같은 리듬으로 누가 더 높은 점수를 받을까요? — A friend challenged you!"
+        url = f"{base}?seed={int(seed)}&lv={level}"
+    image = f"{base}static/{OG_IMAGE}?v={image_version}"
+    tags = [
+        ("property", "og:type", "website"),
+        ("property", "og:site_name", "Rhythm Master Challenge"),
+        ("property", "og:title", title),
+        ("property", "og:description", desc),
+        ("property", "og:url", url),
+        ("property", "og:image", image),
+        ("property", "og:image:width", "1200"),
+        ("property", "og:image:height", "630"),
+        ("property", "og:image:type", "image/png"),
+        ("property", "og:image:alt", "Rhythm Master Challenge — 도형 폴리리듬 게임"),
+        ("property", "og:locale", "ko_KR"),
+        ("property", "og:locale:alternate", "en_US"),
+        ("name", "twitter:card", "summary_large_image"),
+        ("name", "twitter:title", title),
+        ("name", "twitter:description", desc),
+        ("name", "twitter:image", image),
+    ]
+    out = [f'<meta {k}="{n}" content="{html.escape(v, quote=True)}">' for k, n, v in tags]
+    out.append(f'<link rel="canonical" href="{html.escape(url, quote=True)}">')
+    return "\n".join(out)
 
 
 class ValidationError(ValueError):
@@ -145,9 +186,14 @@ def create_app(test_config: dict | None = None) -> Flask:
         RATE_LIMIT=30,          # IP당 분당 기록 요청 수
         RATE_WINDOW=60.0,
         STATS_TTL=30.0,         # 통계 메모리 캐시(초). 원본은 배치가 갱신하는 summary 테이블
+        # 링크 미리보기(OG)에 쓸 사이트 주소. 비우면 요청 주소(nginx 의 Host·X-Forwarded-Proto 반영)를 사용
+        PUBLIC_URL=os.environ.get("RMC_PUBLIC_URL", ""),
     )
     if test_config:
         app.config.update(test_config)
+
+    # nginx 등 리버스 프록시 뒤에서 원래 주소(https·도메인)를 알 수 있게
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     limiter = RateLimiter(app.config["RATE_LIMIT"], app.config["RATE_WINDOW"])
     cache = {"stats": None, "at": 0.0, "html": None, "mtime": None}
@@ -190,10 +236,10 @@ def create_app(test_config: dict | None = None) -> Flask:
             if cache["html"] is not None and cache["mtime"] == mtime:
                 return cache["html"]
         with open(path, encoding="utf-8") as f:
-            html = f.read()
+            text = f.read()
         with cache_lock:
-            cache["html"], cache["mtime"] = html, mtime
-        return html
+            cache["html"], cache["mtime"] = text, mtime
+        return text
 
     # ---------------------------------------------------------------- 헤더
     @app.after_request
@@ -222,8 +268,12 @@ def create_app(test_config: dict | None = None) -> Flask:
     def index():
         # 통계를 페이지에 바로 넣어 보낸다 → 결과 화면에서 추가 요청·대기 없음
         payload = json.dumps(current_stats(), separators=(",", ":")).replace("</", "<\\/")
-        html = index_html().replace(STATS_PLACEHOLDER, f"<script>window.__RMC_STATS__={payload};</script>", 1)
-        return Response(html, mimetype="text/html")
+        og_path = os.path.join(STATIC_DIR, OG_IMAGE)
+        version = int(os.path.getmtime(og_path)) if os.path.exists(og_path) else 0
+        page = (index_html()
+                .replace(STATS_PLACEHOLDER, f"<script>window.__RMC_STATS__={payload};</script>", 1)
+                .replace(OG_PLACEHOLDER, og_tags(app.config["PUBLIC_URL"] or request.host_url, request.args, version), 1))
+        return Response(page, mimetype="text/html")
 
     @app.get("/favicon.ico")
     def favicon():

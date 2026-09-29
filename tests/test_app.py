@@ -122,3 +122,24 @@ def test_counts_update_without_batch(client):
     stats = client.get("/api/stats").get_json()
     assert stats["plays"] == 3 and stats["players"] == 2          # 배치 전에도 즉시 반영
     assert re.search(r'"plays":3', client.get("/").get_data(as_text=True))
+
+
+def test_og_tags(client):
+    page = client.get("/", base_url="http://game.example.com").get_data(as_text=True)
+    assert "<!--RMC_OG-->" not in page
+    assert '<meta property="og:image" content="http://game.example.com/static/og-image.png?v=' in page
+    assert '<meta name="twitter:card" content="summary_large_image">' in page
+    assert client.get("/static/og-image.png").status_code == 200
+    # nginx 뒤 (https + 도메인)
+    page = client.get("/", headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "rhythm.example.com"}).get_data(as_text=True)
+    assert 'content="https://rhythm.example.com/static/og-image.png?v=' in page
+    # 친구 도전 링크: 전용 문구 + 값은 이스케이프/검증
+    page = client.get("/?seed=123&lv=hard").get_data(as_text=True)
+    assert "리듬 도전장" in page and 'og:url" content="http://localhost/?seed=123&amp;lv=hard"' in page
+    page = client.get('/?seed=1&lv="><script>').get_data(as_text=True)
+    assert "<script>\"" not in page and "lv=normal" in page
+
+
+def test_og_public_url(dbpath):
+    c = create_app({"DATABASE": dbpath, "TESTING": True, "PUBLIC_URL": "https://rmc.example.org"}).test_client()
+    assert 'content="https://rmc.example.org/static/og-image.png?v=' in c.get("/").get_data(as_text=True)
