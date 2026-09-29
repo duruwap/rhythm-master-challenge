@@ -296,7 +296,7 @@ kbd {
 .pad.pressed .pad-press { opacity: 1; transition-duration: 30ms; }
 .pad-flash { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: var(--flash, #fff); }
 .pad-flash.go { animation: flash .28s ease-out; }
-@keyframes flash { 0% { opacity: .5; } 100% { opacity: 0; } }
+@keyframes flash { 0% { opacity: .35; } 100% { opacity: 0; } }
 @keyframes shake { 0%, 100% { translate: 0 0; } 25% { translate: -5px 0; } 75% { translate: 5px 0; } }
 @keyframes popIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
 /* 패드 사이 1px 헤어라인 */
@@ -1897,7 +1897,8 @@ const Renderer = {
     const p = this.pads[n.pad];
     this.judgePop(n.pad, result.toUpperCase(), result);
     if (p) {
-      p.el.querySelector('.pad-flash').style.setProperty('--flash', Theme.color('--' + result));
+      // 판정 색은 꼭짓점 터짐 효과가 보여 주므로, 패드는 원래 색을 유지한 채 살짝 밝게만 (MISS 만 회색으로 어둡게)
+      p.el.querySelector('.pad-flash').style.setProperty('--flash', result === 'miss' ? Theme.color('--miss') : '#fff');
       this.retrigger(p.el.querySelector('.pad-flash'), 'go');
       if (result === 'miss' && !reducedMotion()) this.retrigger(p.svg, 'shake');
       const v = n.round === this.shownRound ? p.verts[n.vertex] : null;
